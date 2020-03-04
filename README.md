@@ -43,6 +43,11 @@ First, ensure that the executable has all the `.dll` files next to it. There are
 
 Then call the program by either dragging an image onto Viewer.exe or by running `Viewer.exe <filename>` in a terminal.
 
+### Controls:
+* Zoom is handled by hitting keypad +/- or scrolling. 
+* Panning is handled by left-clicking and dragging the image. 
+* Zoom and position can be reset by hitting keypad 0 (keypad zero).
+
 ### Supported formats:
 As listed [here](https://www.libsdl.org/projects/SDL_image/docs/SDL_image.pdf#page=8&zoom=auto,-205,547).
 
@@ -50,7 +55,7 @@ As listed [here](https://www.libsdl.org/projects/SDL_image/docs/SDL_image.pdf#pa
 * Some file types can contain multiple resolutions/variations for an image (ICO, CUR, ...). SDL_image [documentation][1] states that "for files with multiple images, the first one found with the highest color count is chosen."
 * Animated GIFs will only show the first frame as an SDL_image limitation. Additional external libraries will be required to view animations. TBA.
 
-#### TODO:
+### TODO:
 This list is maintained in main.cpp as I think of things - check there for an up to date copy.
 * Remember window size and position
 * Add key to set zoom to 1:1 pixel ratio
@@ -60,5 +65,6 @@ This list is maintained in main.cpp as I think of things - check there for an up
 * Possible: partial image metadata? PNG image data support from ProjectPNG?
 * Navigate forward/backwards in current directory
 * Animated GIFs
+* Zoom on mouse instead of window center
 
 [1]: https://www.libsdl.org/projects/SDL_image/docs/SDL_image.pdf#page=21&zoom=auto,-205,720
