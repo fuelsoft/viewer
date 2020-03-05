@@ -54,6 +54,7 @@ Then call the program by either dragging an image onto Viewer.exe or by running 
 * Zoom is handled by hitting keypad +/- or scrolling. 
 * Panning is handled by left-clicking and dragging the image. 
 * Zoom and position can be reset by hitting keypad 0 (keypad zero).
+* Quit by closing the window or hitting Escape.
 
 ### Supported formats:
 As listed [here](https://www.libsdl.org/projects/SDL_image/docs/SDL_image.pdf#page=8&zoom=auto,-205,547).
@@ -68,10 +69,10 @@ This list is maintained in main.cpp as I think of things - check there for an up
 * Add key to set zoom to 1:1 pixel ratio
 * Add key to change sampling mode
 * Filename in title
-* Transparent background texture
 * Possible: partial image metadata? PNG image data support from ProjectPNG?
 * Navigate forward/backwards in current directory
 * Animated GIFs
 * Zoom on mouse instead of window center
+* Stop image from being moved off-screen
 
 [1]: https://www.libsdl.org/projects/SDL_image/docs/SDL_image.pdf#page=21&zoom=auto,-205,720

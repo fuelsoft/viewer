@@ -126,15 +126,15 @@ void drawTileTexture(Window* win, SDL_Texture* tileTexture) {
 }
 
 /**
-* draw			- Clear display, then draw tiles and image
+* draw			- Clear display, then draw tiles and image (if provided)
 * win 			> Target Window object
 * tileTexture 	> Texture as SDL_Texture to tile
 * imageTexture 	> Image as SDL_Texture
 */
 void draw(Window* win, SDL_Texture* tile_texture, SDL_Texture* image_texture) {
 	SDL_RenderClear(win->renderer);
-	drawTileTexture(win, tile_texture);
-	redrawImage(win, image_texture);
+	if (tile_texture) drawTileTexture(win, tile_texture);
+	if (image_texture) redrawImage(win, image_texture);
 	SDL_RenderPresent(win->renderer);
 }
 
@@ -186,6 +186,22 @@ int main(int argc, char * argv[]) {
 		std::cout << LOG_NOTICE << "Sampling defaulting to nearest neighbour" << std::endl;
 	}
 
+    //create checkerboard background texture for transparent images
+	SDL_Surface* transparency_tmp = SDL_CreateRGBSurface(0, TEXTURE_CHECKERBOARD_RESOLUTION, TEXTURE_CHECKERBOARD_RESOLUTION, 32, 0, 0, 0, 0);
+	uint32_t* pixeldata = (uint32_t*) transparency_tmp->pixels;
+	for (int h = 0; h < TEXTURE_CHECKERBOARD_RESOLUTION; h++) {
+		for (int w = 0; w < TEXTURE_CHECKERBOARD_RESOLUTION; w++) {
+			int p = TEXTURE_CHECKERBOARD_RESOLUTION / 2;
+			(*(pixeldata + h * TEXTURE_CHECKERBOARD_RESOLUTION + w)) = (((h < p) ^ (w < p)) ? COLOUR_CHECKERBOARD_LIGHT : COLOUR_CHECKERBOARD_DARK);
+		}
+	}
+
+    TEXTURE_TRANSPARENCY = SDL_CreateTextureFromSurface(win.renderer, transparency_tmp);
+	SDL_FreeSurface(transparency_tmp);
+
+	draw(&win, TEXTURE_TRANSPARENCY, nullptr);
+
+    /* Moved after background draw to give illusion of progress while image is loaded */
 	//try loading image from filename
 	imageSurface = IMG_Load(argv[1]);
 
@@ -198,22 +214,9 @@ int main(int argc, char * argv[]) {
 	IMAGE_HEIGHT = imageSurface->h;
 	IMAGE_WIDTH = imageSurface->w;
 
-	//create hardware accelerated texture from image data and free surface
+    //create hardware accelerated texture from image data and free surface
 	imageTexture = SDL_CreateTextureFromSurface(win.renderer, imageSurface);
 	SDL_FreeSurface(imageSurface);
-
-	//create checkerboard background texture for transparent images
-	SDL_Surface* transparency_tmp = SDL_CreateRGBSurface(0, TEXTURE_CHECKERBOARD_RESOLUTION, TEXTURE_CHECKERBOARD_RESOLUTION, 32, 0, 0, 0, 0);
-	uint32_t* pixeldata = (uint32_t*) transparency_tmp->pixels;
-	for (int h = 0; h < TEXTURE_CHECKERBOARD_RESOLUTION; h++) {
-		for (int w = 0; w < TEXTURE_CHECKERBOARD_RESOLUTION; w++) {
-			int p = TEXTURE_CHECKERBOARD_RESOLUTION / 2;
-			(*(pixeldata + h * TEXTURE_CHECKERBOARD_RESOLUTION + w)) = (((h < p) ^ (w < p)) ? COLOUR_CHECKERBOARD_LIGHT : COLOUR_CHECKERBOARD_DARK);
-		}
-	}
-
-	TEXTURE_TRANSPARENCY = SDL_CreateTextureFromSurface(win.renderer, transparency_tmp);
-	SDL_FreeSurface(transparency_tmp);
 
 	draw(&win, TEXTURE_TRANSPARENCY, imageTexture);
 
@@ -259,6 +262,9 @@ int main(int argc, char * argv[]) {
 							VIEWPORT_Y = 0;
 							draw(&win, TEXTURE_TRANSPARENCY, imageTexture);
 							break;
+                        case SDLK_ESCAPE:
+                            quit = true;
+                            break;
 					}
 					break;
 				case SDL_MOUSEWHEEL:
@@ -330,7 +336,6 @@ TODO:
 * Add key to set zoom to 1:1 pixel ratio
 * Add key to change sampling mode
 * Filename in title
-* Transparent background texture
 * Possible: partial image metadata? PNG image data support from ProjectPNG?
 * Navigate forward/backwards in current directory
 * Animated GIFs -> https://stackoverflow.com/questions/36267833/c-sdl2-how-do-i-play-a-gif-in-sdl2/36410301#36410301
