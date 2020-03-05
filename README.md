@@ -21,6 +21,13 @@ Things *Viewer* can do:
 * Pan!
 * Wow!
 
+Also, it's GPU accelerated (via SDL's Accelerated Rendering features). There are trade-offs here:
+
+* **PRO:** Ultra low CPU usage **once image is loaded -- this is still a CPU process.** 
+* **PRO:** Panning and zooming are very smooth and take advantage of better GPU hardware rendering.
+* **CON:** Startup takes a little longer than WPV due to the conversion of the input image to a GPU texture.
+* **CON:** Image size limited by typically smaller VRAM size compared to RAM - *I have yet to find an image large enough to hit this limit though.*
+
 ## Requirements:
 This project depends on:
 * [SDL2](https://www.libsdl.org/download-2.0.php)
@@ -39,7 +46,7 @@ I am working on migrating to a makefile-type build to simplify this.
 ## Usage:
 First, ensure that the executable has all the `.dll` files next to it. There are two groups you need:
 * `SDL2.dll` from the SDL2 download above.
-* `SDL2_image.dll` & all the related DLLs from the SDL_image download above.
+* `SDL2_image.dll` & all the related image-type DLLs from the SDL_image download above.
 
 Then call the program by either dragging an image onto Viewer.exe or by running `Viewer.exe <filename>` in a terminal.
 
