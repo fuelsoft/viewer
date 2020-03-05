@@ -48,6 +48,8 @@ const float ZOOM_MAX = 256;         // 8x zoom
 const float ZOOM_SCROLL_SENSITIVITY = 1.2;
 
 const int TEXTURE_CHECKERBOARD_RESOLUTION = 32;
+const uint32_t COLOUR_CHECKERBOARD_LIGHT = 0x00141414;
+const uint32_t COLOUR_CHECKERBOARD_DARK = 0x000D0D0D;
 SDL_Texture* TEXTURE_TRANSPARENCY;
 
 /* INPUT */
@@ -83,7 +85,6 @@ void redrawImage(Window* win, SDL_Texture* imageTexture) {
 			SDL_Rect windowDestination = {xPos, yPos, WINDOW_WIDTH * VIEWPORT_ZOOM, imageTargetHeight * VIEWPORT_ZOOM};
 
 			SDL_RenderCopy(win->renderer, imageTexture, 0, &windowDestination);
-			SDL_RenderPresent(win->renderer);
 		}
 		//height is priority or equal priority
 		else {
@@ -99,7 +100,6 @@ void redrawImage(Window* win, SDL_Texture* imageTexture) {
 
 			SDL_Rect windowDestination = {xPos, yPos, imageTargetWidth * VIEWPORT_ZOOM, WINDOW_HEIGHT * VIEWPORT_ZOOM};
 			SDL_RenderCopy(win->renderer, imageTexture, 0, &windowDestination);
-			SDL_RenderPresent(win->renderer);
 		}
 	}
 	//image will fit in existing window
@@ -107,9 +107,7 @@ void redrawImage(Window* win, SDL_Texture* imageTexture) {
 		int xPos = (WINDOW_WIDTH - IMAGE_WIDTH * VIEWPORT_ZOOM)/2 + VIEWPORT_X;
 		int yPos = (WINDOW_HEIGHT - IMAGE_HEIGHT * VIEWPORT_ZOOM)/2 + VIEWPORT_Y;
 		SDL_Rect windowDestination = {xPos, yPos, IMAGE_WIDTH * VIEWPORT_ZOOM, IMAGE_HEIGHT * VIEWPORT_ZOOM};
-
 		SDL_RenderCopy(win->renderer, imageTexture, 0, &windowDestination);
-		SDL_RenderPresent(win->renderer);
 	}
 }
 
@@ -119,9 +117,12 @@ void redrawImage(Window* win, SDL_Texture* imageTexture) {
 * tileTexture 		> Texture as SDL_Texture to tile
 */
 void drawTileTexture(Window* win, SDL_Texture* tileTexture) {
-	SDL_Rect destination = {0, 0, 32, 32};
-	SDL_RenderCopy(win->renderer, tileTexture, 0, &destination);
-	SDL_RenderPresent(win->renderer);
+	for (int h = 0; h < WINDOW_HEIGHT; h += TEXTURE_CHECKERBOARD_RESOLUTION){
+		for (int w = 0; w < WINDOW_WIDTH; w += TEXTURE_CHECKERBOARD_RESOLUTION){
+			SDL_Rect destination = {w, h, TEXTURE_CHECKERBOARD_RESOLUTION, TEXTURE_CHECKERBOARD_RESOLUTION};
+			SDL_RenderCopy(win->renderer, tileTexture, 0, &destination);
+		}
+	}
 }
 
 /**
@@ -132,8 +133,9 @@ void drawTileTexture(Window* win, SDL_Texture* tileTexture) {
 */
 void draw(Window* win, SDL_Texture* tile_texture, SDL_Texture* image_texture) {
 	SDL_RenderClear(win->renderer);
-	//drawTileTexture(win, tile_texture);
+	drawTileTexture(win, tile_texture);
 	redrawImage(win, image_texture);
+	SDL_RenderPresent(win->renderer);
 }
 
 /**
@@ -200,7 +202,20 @@ int main(int argc, char * argv[]) {
 	imageTexture = SDL_CreateTextureFromSurface(win.renderer, imageSurface);
 	SDL_FreeSurface(imageSurface);
 
-	draw(&win, nullptr, imageTexture);
+	//create checkerboard background texture for transparent images
+	SDL_Surface* transparency_tmp = SDL_CreateRGBSurface(0, TEXTURE_CHECKERBOARD_RESOLUTION, TEXTURE_CHECKERBOARD_RESOLUTION, 32, 0, 0, 0, 0);
+	uint32_t* pixeldata = (uint32_t*) transparency_tmp->pixels;
+	for (int h = 0; h < TEXTURE_CHECKERBOARD_RESOLUTION; h++) {
+		for (int w = 0; w < TEXTURE_CHECKERBOARD_RESOLUTION; w++) {
+			int p = TEXTURE_CHECKERBOARD_RESOLUTION / 2;
+			(*(pixeldata + h * TEXTURE_CHECKERBOARD_RESOLUTION + w)) = (((h < p) ^ (w < p)) ? COLOUR_CHECKERBOARD_LIGHT : COLOUR_CHECKERBOARD_DARK);
+		}
+	}
+
+	TEXTURE_TRANSPARENCY = SDL_CreateTextureFromSurface(win.renderer, transparency_tmp);
+	SDL_FreeSurface(transparency_tmp);
+
+	draw(&win, TEXTURE_TRANSPARENCY, imageTexture);
 
 	int mouseX;
 	int mouseY;
@@ -224,7 +239,7 @@ int main(int argc, char * argv[]) {
 							break;
 						case SDL_WINDOWEVENT_SIZE_CHANGED:
 							SDL_GetWindowSize(win.window, &WINDOW_WIDTH, &WINDOW_HEIGHT);
-							draw(&win, nullptr, imageTexture);
+							draw(&win, TEXTURE_TRANSPARENCY, imageTexture);
 							break;
 					}
 					break;
@@ -232,17 +247,17 @@ int main(int argc, char * argv[]) {
 					switch (sdlEvent.key.keysym.sym) {
 						case SDLK_KP_PLUS: //keypad +, zoom in
 							VIEWPORT_ZOOM = std::min(ZOOM_MAX, VIEWPORT_ZOOM * 2.0f);
-							draw(&win, nullptr, imageTexture);
+							draw(&win, TEXTURE_TRANSPARENCY, imageTexture);
 							break;
 						case SDLK_KP_MINUS: //keypad -, zoom out
 							VIEWPORT_ZOOM = std::max(ZOOM_MIN, VIEWPORT_ZOOM/2.0f);
-							draw(&win, nullptr, imageTexture);
+							draw(&win, TEXTURE_TRANSPARENCY, imageTexture);
 							break;
 						case SDLK_KP_0: //keypad 0, reset zoom and positioning
 							VIEWPORT_ZOOM = 1.0;
 							VIEWPORT_X = 0;
 							VIEWPORT_Y = 0;
-							draw(&win, nullptr, imageTexture);
+							draw(&win, TEXTURE_TRANSPARENCY, imageTexture);
 							break;
 					}
 					break;
@@ -258,7 +273,7 @@ int main(int argc, char * argv[]) {
 							VIEWPORT_X *= ZOOM_SCROLL_SENSITIVITY;
 							VIEWPORT_Y *= ZOOM_SCROLL_SENSITIVITY;
 
-							draw(&win, nullptr, imageTexture);
+							draw(&win, TEXTURE_TRANSPARENCY, imageTexture);
 						}
 						else if (yScrollVal < 0) {
 							VIEWPORT_ZOOM = std::max(ZOOM_MIN, VIEWPORT_ZOOM / ZOOM_SCROLL_SENSITIVITY);
@@ -267,7 +282,7 @@ int main(int argc, char * argv[]) {
 							VIEWPORT_X /= ZOOM_SCROLL_SENSITIVITY;
 							VIEWPORT_Y /= ZOOM_SCROLL_SENSITIVITY;
 
-							draw(&win, nullptr, imageTexture);
+							draw(&win, TEXTURE_TRANSPARENCY, imageTexture);
 						}
 					}
 					break;
@@ -297,7 +312,7 @@ int main(int argc, char * argv[]) {
 						SDL_GetMouseState(&mouseX, &mouseY);
 						VIEWPORT_X += mouseX - mousePreviousX;
 						VIEWPORT_Y += mouseY - mousePreviousY;
-						draw(&win, nullptr, imageTexture);
+						draw(&win, TEXTURE_TRANSPARENCY, imageTexture);
 					}
 					break;
 
