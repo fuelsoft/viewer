@@ -330,8 +330,7 @@ int main(int argc, char * argv[]) {
 	return 0;
 }
 
-/*
-TODO:
+/* TODO:
 * Remember window size and position
 * Add key to set zoom to 1:1 pixel ratio
 * Add key to change sampling mode
@@ -341,4 +340,11 @@ TODO:
 * Animated GIFs -> https://stackoverflow.com/questions/36267833/c-sdl2-how-do-i-play-a-gif-in-sdl2/36410301#36410301
 * Zoom on mouse instead of window center
 * Stop image from being moved off-screen
+* Possible: Image deletion?
+* Possible: Image rotation?
+*/
+
+/* KNOWN PROBLEMS:
+* ICO: Files stored as "NEW PNG" type do not load with SDL_image
+* ICO: Files with partial transparent pixels do not render correctly.
 */
