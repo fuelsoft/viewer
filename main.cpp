@@ -16,6 +16,7 @@ NICK WILSON
 #include <thread>
 #include <chrono>
 #include <cmath>
+#include <fstream>
 
 /* /// CONSTANTS /// */
 
@@ -31,6 +32,9 @@ const int WINDOW_HEIGHT_DEFAULT = 900;
 
 int DISPLAY_WIDTH = 0;
 int DISPLAY_HEIGHT = 0;
+
+int WINDOW_X = 0;
+int WINDOW_Y = 0;
 
 int WINDOW_WIDTH = 0;
 int WINDOW_HEIGHT = 0;
@@ -55,7 +59,52 @@ SDL_Texture* TEXTURE_TRANSPARENCY;
 /* INPUT */
 bool MOUSE_CLICK_STATE_LEFT = false;
 
+/* SETTINGS */
+std::string PROGRAM_CWD;
+
+const std::string FILENAME_SETTINGS = "settings.cfg";
+const int settingDataSize = sizeof(WINDOW_X) 
+							+ sizeof(WINDOW_Y) 
+							+ sizeof(WINDOW_WIDTH) 
+							+ sizeof(WINDOW_HEIGHT);
+
 /* /// CODE /// */
+
+/**
+* readSettings - Load settings file if possible and recover window position and size.
+*/
+void readSettings() {
+	std::ifstream inputStream;
+	inputStream.open(PROGRAM_CWD + '\\' + FILENAME_SETTINGS, std::ifstream::in | std::ifstream::binary | std::ifstream::ate);
+	if (inputStream.is_open()) {
+		if (inputStream.tellg() == settingDataSize) {
+			inputStream.seekg(std::ios_base::beg);
+			inputStream.read(reinterpret_cast<char *>(&WINDOW_X), sizeof(WINDOW_X));
+			inputStream.read(reinterpret_cast<char *>(&WINDOW_Y), sizeof(WINDOW_Y));
+			inputStream.read(reinterpret_cast<char *>(&WINDOW_WIDTH), sizeof(WINDOW_WIDTH));
+			inputStream.read(reinterpret_cast<char *>(&WINDOW_HEIGHT), sizeof(WINDOW_HEIGHT));
+		}
+		else {
+			std::cerr << "Incorrect settings data size!" << std::endl;
+
+			//window x,y will default to 0,0 which is fine.
+			WINDOW_WIDTH = WINDOW_WIDTH_DEFAULT;
+			WINDOW_HEIGHT = WINDOW_HEIGHT_DEFAULT;
+		}
+		inputStream.close();
+	}
+	else { //load defaults
+		std::cerr << "No settings file located!" << std::endl;
+
+		//window x,y will default to 0,0 which is fine.
+		WINDOW_WIDTH = WINDOW_WIDTH_DEFAULT;
+		WINDOW_HEIGHT = WINDOW_HEIGHT_DEFAULT;
+	}
+}
+
+void writeSettings() {
+
+}
 
 /**
 * redrawImage	- Re-render the display image, respecting zoom and pan positioning
@@ -145,6 +194,11 @@ int main(int argc, char * argv[]) {
 	bool quit = false;
 	int windowDisplayIndex;
 
+	PROGRAM_CWD = std::string(argv[0]);
+	PROGRAM_CWD.resize(PROGRAM_CWD.rfind('\\'));
+
+	std::cout << PROGRAM_CWD << std::endl;
+
 	SDL_Event sdlEvent;
 	SDL_DisplayMode displayMode;
 	SDL_Surface* imageSurface;
@@ -156,8 +210,10 @@ int main(int argc, char * argv[]) {
 		return 1;
 	}
 
+	readSettings();
+
 	/* Create invisible application window */
-	Window win(WINDOW_WIDTH_DEFAULT, WINDOW_HEIGHT_DEFAULT);
+	Window win(WINDOW_WIDTH, WINDOW_HEIGHT);
 	win.setTitle(APPLICATION_TITLE.c_str());
 
 	windowDisplayIndex = SDL_GetWindowDisplayIndex(win.window);
@@ -168,8 +224,6 @@ int main(int argc, char * argv[]) {
 
 	DISPLAY_WIDTH = displayMode.w;
 	DISPLAY_HEIGHT = displayMode.h;
-	WINDOW_WIDTH = WINDOW_WIDTH_DEFAULT;
-	WINDOW_HEIGHT = WINDOW_HEIGHT_DEFAULT;
 
 	//no file passed in
 	if (argc < 2) {
@@ -342,6 +396,7 @@ int main(int argc, char * argv[]) {
 * Stop image from being moved off-screen
 * Possible: Image deletion?
 * Possible: Image rotation?
+* Cursor icon state updates?
 */
 
 /* KNOWN PROBLEMS:
