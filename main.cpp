@@ -63,21 +63,31 @@ bool MOUSE_CLICK_STATE_LEFT = false;
 std::string PROGRAM_CWD;
 
 const std::string FILENAME_SETTINGS = "settings.cfg";
-const int settingDataSize = sizeof(WINDOW_X) 
-							+ sizeof(WINDOW_Y) 
-							+ sizeof(WINDOW_WIDTH) 
+const int settingDataSize = sizeof(WINDOW_X)
+							+ sizeof(WINDOW_Y)
+							+ sizeof(WINDOW_WIDTH)
 							+ sizeof(WINDOW_HEIGHT);
 
 /* /// CODE /// */
+
+void setWindowDefaults() {
+	WINDOW_WIDTH = WINDOW_WIDTH_DEFAULT;
+	WINDOW_HEIGHT = WINDOW_HEIGHT_DEFAULT;
+}
 
 /**
 * readSettings - Load settings file if possible and recover window position and size.
 */
 void readSettings() {
-	std::ifstream inputStream;
-	inputStream.open(PROGRAM_CWD + '\\' + FILENAME_SETTINGS, std::ifstream::in | std::ifstream::binary | std::ifstream::ate);
+	//if CWD is length 0, program was run from terminal and is CWD is unknown. Use default settings.
+	if (!PROGRAM_CWD.length()) {
+		std::cerr << LOG_NOTICE << "Run Viewer using full path to load settings file. Using defaults." << std::endl;
+		setWindowDefaults();
+		return;
+	}
+	std::ifstream inputStream(PROGRAM_CWD + '\\' + FILENAME_SETTINGS, std::ifstream::in | std::ifstream::binary | std::ifstream::ate);
 	if (inputStream.is_open()) {
-		if (inputStream.tellg() == settingDataSize) {
+		if (inputStream.tellg() >= settingDataSize) {
 			inputStream.seekg(std::ios_base::beg);
 			inputStream.read(reinterpret_cast<char *>(&WINDOW_X), sizeof(WINDOW_X));
 			inputStream.read(reinterpret_cast<char *>(&WINDOW_Y), sizeof(WINDOW_Y));
@@ -85,25 +95,32 @@ void readSettings() {
 			inputStream.read(reinterpret_cast<char *>(&WINDOW_HEIGHT), sizeof(WINDOW_HEIGHT));
 		}
 		else {
-			std::cerr << "Incorrect settings data size!" << std::endl;
-
-			//window x,y will default to 0,0 which is fine.
-			WINDOW_WIDTH = WINDOW_WIDTH_DEFAULT;
-			WINDOW_HEIGHT = WINDOW_HEIGHT_DEFAULT;
+			std::cerr << LOG_WARNING << "Incorrect settings data size!" << std::endl;
+			//window x,y will default to 0,0 which is fine
+			setWindowDefaults();
 		}
 		inputStream.close();
 	}
 	else { //load defaults
-		std::cerr << "No settings file located!" << std::endl;
-
-		//window x,y will default to 0,0 which is fine.
-		WINDOW_WIDTH = WINDOW_WIDTH_DEFAULT;
-		WINDOW_HEIGHT = WINDOW_HEIGHT_DEFAULT;
+		std::cerr << LOG_NOTICE << "No settings file located!" << std::endl;
+		setWindowDefaults();
 	}
 }
 
 void writeSettings() {
-
+	//working directory wasn't set, don't write anything
+	if (!PROGRAM_CWD.length()) return;
+	std::ofstream outputStream(PROGRAM_CWD + '\\' + FILENAME_SETTINGS, std::ifstream::out | std::ifstream::binary | std::ifstream::trunc);
+	if (outputStream.is_open()) {
+		outputStream.write(reinterpret_cast<char *>(&WINDOW_X), sizeof(WINDOW_X));
+		outputStream.write(reinterpret_cast<char *>(&WINDOW_Y), sizeof(WINDOW_Y));
+		outputStream.write(reinterpret_cast<char *>(&WINDOW_WIDTH), sizeof(WINDOW_WIDTH));
+		outputStream.write(reinterpret_cast<char *>(&WINDOW_HEIGHT), sizeof(WINDOW_HEIGHT));
+		outputStream.close();
+	}
+	else {
+		std::cerr << LOG_ERROR << "Could not write to settings file!" << std::endl;
+	}
 }
 
 /**
@@ -192,15 +209,17 @@ void draw(Window* win, SDL_Texture* tile_texture, SDL_Texture* image_texture) {
 */
 int main(int argc, char * argv[]) {
 	bool quit = false;
-	int windowDisplayIndex;
 
+	//pull current directory from first argument
 	PROGRAM_CWD = std::string(argv[0]);
-	PROGRAM_CWD.resize(PROGRAM_CWD.rfind('\\'));
+	//strip executable name if path exists
+	int pathLength = PROGRAM_CWD.rfind('\\');
+	if (pathLength > 0) PROGRAM_CWD.resize(pathLength);
+	else PROGRAM_CWD = "";
 
 	std::cout << PROGRAM_CWD << std::endl;
 
 	SDL_Event sdlEvent;
-	SDL_DisplayMode displayMode;
 	SDL_Surface* imageSurface;
 	SDL_Texture* imageTexture;
 
@@ -213,17 +232,8 @@ int main(int argc, char * argv[]) {
 	readSettings();
 
 	/* Create invisible application window */
-	Window win(WINDOW_WIDTH, WINDOW_HEIGHT);
+	Window win(WINDOW_WIDTH, WINDOW_HEIGHT, WINDOW_X, WINDOW_Y);
 	win.setTitle(APPLICATION_TITLE.c_str());
-
-	windowDisplayIndex = SDL_GetWindowDisplayIndex(win.window);
-	if (SDL_GetCurrentDisplayMode(windowDisplayIndex, &displayMode)) {
-		std::cerr << LOG_NOTICE << "Could not load display properties!" << std::endl;
-		return 1;
-	}
-
-	DISPLAY_WIDTH = displayMode.w;
-	DISPLAY_HEIGHT = displayMode.h;
 
 	//no file passed in
 	if (argc < 2) {
@@ -293,6 +303,9 @@ int main(int argc, char * argv[]) {
 					switch (sdlEvent.window.event) {
 						case SDL_WINDOWEVENT_CLOSE:
 							quit = true;
+							break;
+						case SDL_WINDOWEVENT_MOVED:
+							SDL_GetWindowPosition(win.window, &WINDOW_X, &WINDOW_Y);
 							break;
 						case SDL_WINDOWEVENT_SIZE_CHANGED:
 							SDL_GetWindowSize(win.window, &WINDOW_WIDTH, &WINDOW_HEIGHT);
@@ -378,16 +391,16 @@ int main(int argc, char * argv[]) {
 
 			}
 		}
-		std::this_thread::sleep_for(std::chrono::milliseconds(20));
+		std::this_thread::sleep_for(std::chrono::milliseconds(10));
 	}
+
+	writeSettings();
 
 	return 0;
 }
 
 /* TODO:
-* Remember window size and position
 * Add key to set zoom to 1:1 pixel ratio
-* Add key to change sampling mode
 * Filename in title
 * Possible: partial image metadata? PNG image data support from ProjectPNG?
 * Navigate forward/backwards in current directory
@@ -401,5 +414,16 @@ int main(int argc, char * argv[]) {
 
 /* KNOWN PROBLEMS:
 * ICO: Files stored as "NEW PNG" type do not load with SDL_image
-* ICO: Files with partial transparent pixels do not render correctly.
+* ICO: Files with partial transparent pixels do not render correctly
+* GIF: Animated sequences only load the first frame
+*/
+
+/* NOTES:
+* - Working directory implementation will only work when program
+*	is run using it's full path (drag and drop, as default program),
+*	NOT directly from folder using terminal.
+*	This is not considered a high-priority fix due to complexity
+*	of doing it 'the right way' and minimal downside.
+*	It should happen infrequently and when it does, the program
+*	will just use the default settings.
 */

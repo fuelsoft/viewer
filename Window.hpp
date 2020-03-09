@@ -23,7 +23,7 @@ public:
 
 	Window() {}
 
-	Window(int w, int h, bool visible = true);
+	Window(int w, int h, int x = SDL_WINDOWPOS_UNDEFINED, int y = SDL_WINDOWPOS_UNDEFINED, bool visible = true);
 
 	~Window();
 

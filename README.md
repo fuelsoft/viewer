@@ -60,19 +60,25 @@ Then call the program by either dragging an image onto Viewer.exe or by running 
 As listed [here](https://www.libsdl.org/projects/SDL_image/docs/SDL_image.pdf#page=8&zoom=auto,-205,547).
 
 #### Notes:
-* Some file types can contain multiple resolutions/variations for an image (ICO, CUR, ...). SDL_image [documentation][1] states that "for files with multiple images, the first one found with the highest color count is chosen."
-* Animated GIFs will only show the first frame as an SDL_image limitation. Additional external libraries will be required to view animations. TBA.
+* Some file types can contain multiple resolutions/variations of an image (ICO, CUR, ...). SDL_image [documentation][1] states that "for files with multiple images, the first one found with the highest color count is chosen."
+* Window size and position are stored in `setting.cfg` in the program folder. If this becomes broken somehow (window appears off-screen, etc.) it is safe to delete this file to restore defaults.
 
 ### TODO:
-This list is maintained in main.cpp as I think of things - check there for an up to date copy.
-* Remember window size and position
+This list is maintained in `main.cpp` as I think of things - check there for an up to date copy.
 * Add key to set zoom to 1:1 pixel ratio
-* Add key to change sampling mode
 * Filename in title
 * Possible: partial image metadata? PNG image data support from ProjectPNG?
 * Navigate forward/backwards in current directory
 * Animated GIFs
 * Zoom on mouse instead of window center
 * Stop image from being moved off-screen
+* Possible: Image deletion?
+* Possible: Image rotation?
+* Cursor icon state updates?
+
+### Known Problems:
+* ICO: Files stored as "NEW PNG" type do not load with SDL_image
+* ICO: Files with partially transparent pixels do not render correctly
+* GIF: Animated sequences only load the first frame
 
 [1]: https://www.libsdl.org/projects/SDL_image/docs/SDL_image.pdf#page=21&zoom=auto,-205,720
