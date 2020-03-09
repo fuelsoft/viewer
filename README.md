@@ -10,10 +10,10 @@ Things WPV does that drove me to insanity:
 * "Windows Photo Viewer can't display this picture because there might not be enough memory available on your computer"
     * Let me assure you, this is not correct.
     * Afflicted photos open correctly in Photoshop, web browsers, etc. It's just WPV that has a problem.
-* Very low FPS and bad screen tearing with no warning when zooming / panning while zoomed in.
+* Very low FPS and bad screen tearing with no warning when zooming or when panning while zoomed in.
     * Not a big deal with a static image but it's really annoying and there's no good reason for it.
 
-Surely something I wrote couldn't be any worse, right?
+How hard could it be to write a replacement, right?
 
 Things *Viewer* can do:
 * Display most common image formats.
@@ -41,7 +41,7 @@ This is where it gets tricky. I'm using Code::Blocks to write this, which abstra
 
 It should work with little extra effort by just plugging the CPP files into GCC and linking in SDL2 and SDL_image.
 
-I am working on migrating to a makefile-type build to simplify this.
+I will work on migrating to a makefile-type build to simplify this at some point. Pre-built copies are available too.
 
 ## Usage:
 First, ensure that the executable has all the `.dll` files next to it. There are two groups you need:
@@ -61,7 +61,7 @@ As listed [here](https://www.libsdl.org/projects/SDL_image/docs/SDL_image.pdf#pa
 
 #### Notes:
 * Some file types can contain multiple resolutions/variations of an image (ICO, CUR, ...). SDL_image [documentation][1] states that "for files with multiple images, the first one found with the highest color count is chosen."
-* Window size and position are stored in `setting.cfg` in the program folder. If this becomes broken somehow (window appears off-screen, etc.) it is safe to delete this file to restore defaults.
+* Window size and position are stored in `settings.cfg` in the program folder. If this becomes broken somehow (window appears off-screen, etc.) it is safe to delete this file to restore defaults.
 
 ### TODO:
 This list is maintained in `main.cpp` as I think of things - check there for an up to date copy.
