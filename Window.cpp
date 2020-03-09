@@ -8,8 +8,8 @@ NICK WILSON
 
 /* PUBLIC */
 
-Window::Window(int w, int h, int x, int y, bool visible) {
-	window = SDL_CreateWindow("Untitled Window", x, y, w, h, ((visible) ? SDL_WINDOW_SHOWN : SDL_WINDOW_HIDDEN) | SDL_WINDOW_RESIZABLE);
+Window::Window(int w, int h, int x, int y, uint32_t flags) {
+	window = SDL_CreateWindow("Untitled Window", x, y, w, h, flags);
 
 	if (window != NULL) {
 		surface = SDL_GetWindowSurface(window);

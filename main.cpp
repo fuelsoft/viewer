@@ -30,14 +30,18 @@ const std::string LOG_NOTICE = "<NOTICE> ";
 const int WINDOW_WIDTH_DEFAULT = 1600;
 const int WINDOW_HEIGHT_DEFAULT = 900;
 
-int DISPLAY_WIDTH = 0;
-int DISPLAY_HEIGHT = 0;
-
 int WINDOW_X = SDL_WINDOWPOS_UNDEFINED;
 int WINDOW_Y = SDL_WINDOWPOS_UNDEFINED;
+int WINDOW_PREVIOUS_X = SDL_WINDOWPOS_UNDEFINED;
+int WINDOW_PREVIOUS_Y = SDL_WINDOWPOS_UNDEFINED;
 
-int WINDOW_WIDTH = 0;
-int WINDOW_HEIGHT = 0;
+int WINDOW_WIDTH = WINDOW_WIDTH_DEFAULT;
+int WINDOW_HEIGHT = WINDOW_HEIGHT_DEFAULT;
+int WINDOW_PREVIOUS_WIDTH = WINDOW_WIDTH_DEFAULT;
+int WINDOW_PREVIOUS_HEIGHT = WINDOW_HEIGHT_DEFAULT;
+
+bool WINDOW_MAXIMIZED = 0;
+bool WINDOW_MOVED = 0;
 
 /* IMAGE DISPLAY */
 int IMAGE_WIDTH = 0;
@@ -66,14 +70,10 @@ const std::string FILENAME_SETTINGS = "settings.cfg";
 const int settingDataSize = sizeof(WINDOW_X)
 							+ sizeof(WINDOW_Y)
 							+ sizeof(WINDOW_WIDTH)
-							+ sizeof(WINDOW_HEIGHT);
+							+ sizeof(WINDOW_HEIGHT)
+							+ sizeof(WINDOW_MAXIMIZED);
 
 /* /// CODE /// */
-
-void setWindowDefaults() {
-	WINDOW_WIDTH = WINDOW_WIDTH_DEFAULT;
-	WINDOW_HEIGHT = WINDOW_HEIGHT_DEFAULT;
-}
 
 /**
 * readSettings - Load settings file if possible and recover window position and size.
@@ -82,7 +82,6 @@ void readSettings() {
 	//if CWD is length 0, program was run from terminal and is CWD is unknown. Use default settings.
 	if (!PROGRAM_CWD.length()) {
 		std::cerr << LOG_NOTICE << "Run Viewer using full path to load settings file. Using defaults." << std::endl;
-		setWindowDefaults();
 		return;
 	}
 	std::ifstream inputStream(PROGRAM_CWD + '\\' + FILENAME_SETTINGS, std::ifstream::in | std::ifstream::binary | std::ifstream::ate);
@@ -93,17 +92,15 @@ void readSettings() {
 			inputStream.read(reinterpret_cast<char *>(&WINDOW_Y), sizeof(WINDOW_Y));
 			inputStream.read(reinterpret_cast<char *>(&WINDOW_WIDTH), sizeof(WINDOW_WIDTH));
 			inputStream.read(reinterpret_cast<char *>(&WINDOW_HEIGHT), sizeof(WINDOW_HEIGHT));
+			inputStream.read(reinterpret_cast<char *>(&WINDOW_MAXIMIZED), sizeof(WINDOW_MAXIMIZED));
 		}
 		else {
 			std::cerr << LOG_WARNING << "Incorrect settings data size!" << std::endl;
-			//window x,y will default to 0,0 which is fine
-			setWindowDefaults();
 		}
 		inputStream.close();
 	}
 	else { //load defaults
 		std::cerr << LOG_NOTICE << "No settings file located!" << std::endl;
-		setWindowDefaults();
 	}
 }
 
@@ -112,10 +109,29 @@ void writeSettings() {
 	if (!PROGRAM_CWD.length()) return;
 	std::ofstream outputStream(PROGRAM_CWD + '\\' + FILENAME_SETTINGS, std::ifstream::out | std::ifstream::binary | std::ifstream::trunc);
 	if (outputStream.is_open()) {
-		outputStream.write(reinterpret_cast<char *>(&WINDOW_X), sizeof(WINDOW_X));
-		outputStream.write(reinterpret_cast<char *>(&WINDOW_Y), sizeof(WINDOW_Y));
-		outputStream.write(reinterpret_cast<char *>(&WINDOW_WIDTH), sizeof(WINDOW_WIDTH));
-		outputStream.write(reinterpret_cast<char *>(&WINDOW_HEIGHT), sizeof(WINDOW_HEIGHT));
+		//if window was 'moved' during resize, discard
+		if (!WINDOW_MOVED) {
+			outputStream.write(reinterpret_cast<char *>(&WINDOW_PREVIOUS_X), sizeof(WINDOW_PREVIOUS_X));
+			outputStream.write(reinterpret_cast<char *>(&WINDOW_PREVIOUS_Y), sizeof(WINDOW_PREVIOUS_Y));
+		}
+		//if window was actually moved, record it
+		else {
+			outputStream.write(reinterpret_cast<char *>(&WINDOW_X), sizeof(WINDOW_X));
+			outputStream.write(reinterpret_cast<char *>(&WINDOW_Y), sizeof(WINDOW_Y));
+		}
+		//if the window is maximized, write the last known size before it was maximized
+		if (WINDOW_MAXIMIZED) {
+			outputStream.write(reinterpret_cast<char *>(&WINDOW_PREVIOUS_WIDTH), sizeof(WINDOW_PREVIOUS_WIDTH));
+			outputStream.write(reinterpret_cast<char *>(&WINDOW_PREVIOUS_HEIGHT), sizeof(WINDOW_PREVIOUS_HEIGHT));
+		}
+		//otherwise, write current size
+		else {
+			outputStream.write(reinterpret_cast<char *>(&WINDOW_WIDTH), sizeof(WINDOW_WIDTH));
+			outputStream.write(reinterpret_cast<char *>(&WINDOW_HEIGHT), sizeof(WINDOW_HEIGHT));
+		}
+		//write window state
+		outputStream.write(reinterpret_cast<char *>(&WINDOW_MAXIMIZED), sizeof(WINDOW_MAXIMIZED));
+
 		outputStream.close();
 	}
 	else {
@@ -217,8 +233,6 @@ int main(int argc, char * argv[]) {
 	if (pathLength > 0) PROGRAM_CWD.resize(pathLength);
 	else PROGRAM_CWD = "";
 
-	std::cout << PROGRAM_CWD << std::endl;
-
 	SDL_Event sdlEvent;
 	SDL_Surface* imageSurface;
 	SDL_Texture* imageTexture;
@@ -232,7 +246,7 @@ int main(int argc, char * argv[]) {
 	readSettings();
 
 	/* Create invisible application window */
-	Window win(WINDOW_WIDTH, WINDOW_HEIGHT, WINDOW_X, WINDOW_Y);
+	Window win(WINDOW_WIDTH, WINDOW_HEIGHT, WINDOW_X, WINDOW_Y, SDL_WINDOW_SHOWN | SDL_WINDOW_RESIZABLE | (WINDOW_MAXIMIZED ? SDL_WINDOW_MAXIMIZED : 0));
 	win.setTitle(APPLICATION_TITLE.c_str());
 
 	//no file passed in
@@ -250,7 +264,7 @@ int main(int argc, char * argv[]) {
 		std::cout << LOG_NOTICE << "Sampling defaulting to nearest neighbour" << std::endl;
 	}
 
-    //create checkerboard background texture for transparent images
+	//create checkerboard background texture for transparent images
 	SDL_Surface* transparency_tmp = SDL_CreateRGBSurface(0, TEXTURE_CHECKERBOARD_RESOLUTION, TEXTURE_CHECKERBOARD_RESOLUTION, 32, 0, 0, 0, 0);
 	uint32_t* pixeldata = (uint32_t*) transparency_tmp->pixels;
 	for (int h = 0; h < TEXTURE_CHECKERBOARD_RESOLUTION; h++) {
@@ -260,12 +274,11 @@ int main(int argc, char * argv[]) {
 		}
 	}
 
-    TEXTURE_TRANSPARENCY = SDL_CreateTextureFromSurface(win.renderer, transparency_tmp);
+	TEXTURE_TRANSPARENCY = SDL_CreateTextureFromSurface(win.renderer, transparency_tmp);
 	SDL_FreeSurface(transparency_tmp);
 
 	draw(&win, TEXTURE_TRANSPARENCY, nullptr);
 
-    /* Moved after background draw to give illusion of progress while image is loaded */
 	//try loading image from filename
 	imageSurface = IMG_Load(argv[1]);
 
@@ -278,7 +291,7 @@ int main(int argc, char * argv[]) {
 	IMAGE_HEIGHT = imageSurface->h;
 	IMAGE_WIDTH = imageSurface->w;
 
-    //create hardware accelerated texture from image data and free surface
+	//create hardware accelerated texture from image data and free surface
 	imageTexture = SDL_CreateTextureFromSurface(win.renderer, imageSurface);
 	SDL_FreeSurface(imageSurface);
 
@@ -305,9 +318,19 @@ int main(int argc, char * argv[]) {
 							quit = true;
 							break;
 						case SDL_WINDOWEVENT_MOVED:
+							WINDOW_MOVED = true;
+							WINDOW_PREVIOUS_X = WINDOW_X;
+							WINDOW_PREVIOUS_Y = WINDOW_Y;
 							SDL_GetWindowPosition(win.window, &WINDOW_X, &WINDOW_Y);
 							break;
+						case SDL_WINDOWEVENT_MAXIMIZED:
+							WINDOW_MOVED = false;
+							WINDOW_MAXIMIZED = true;
+							break;
 						case SDL_WINDOWEVENT_SIZE_CHANGED:
+							WINDOW_MAXIMIZED = false;
+							WINDOW_PREVIOUS_WIDTH = WINDOW_WIDTH;
+							WINDOW_PREVIOUS_HEIGHT = WINDOW_HEIGHT;
 							SDL_GetWindowSize(win.window, &WINDOW_WIDTH, &WINDOW_HEIGHT);
 							draw(&win, TEXTURE_TRANSPARENCY, imageTexture);
 							break;
@@ -329,34 +352,31 @@ int main(int argc, char * argv[]) {
 							VIEWPORT_Y = 0;
 							draw(&win, TEXTURE_TRANSPARENCY, imageTexture);
 							break;
-                        case SDLK_ESCAPE:
-                            quit = true;
-                            break;
+						case SDLK_ESCAPE:
+							quit = true;
+							break;
 					}
-					break;
+						break;
 				case SDL_MOUSEWHEEL:
-					{
-						int yScrollVal = sdlEvent.wheel.y;
-						if (yScrollVal > 0) {
-							VIEWPORT_ZOOM = std::min(ZOOM_MAX, VIEWPORT_ZOOM * ZOOM_SCROLL_SENSITIVITY);
+					if (sdlEvent.wheel.y > 0) {
+						VIEWPORT_ZOOM = std::min(ZOOM_MAX, VIEWPORT_ZOOM * ZOOM_SCROLL_SENSITIVITY);
 
-							/* Correct positioning.
-							 * Required as otherwise zoom functions as [center zoom + offset]
-							 *  instead of [zoom on offset from center] */
-							VIEWPORT_X *= ZOOM_SCROLL_SENSITIVITY;
-							VIEWPORT_Y *= ZOOM_SCROLL_SENSITIVITY;
+						/* Correct positioning.
+						 * Required as otherwise zoom functions as [center zoom + offset]
+						 *  instead of [zoom on offset from center] */
+						VIEWPORT_X *= ZOOM_SCROLL_SENSITIVITY;
+						VIEWPORT_Y *= ZOOM_SCROLL_SENSITIVITY;
 
-							draw(&win, TEXTURE_TRANSPARENCY, imageTexture);
-						}
-						else if (yScrollVal < 0) {
-							VIEWPORT_ZOOM = std::max(ZOOM_MIN, VIEWPORT_ZOOM / ZOOM_SCROLL_SENSITIVITY);
+						draw(&win, TEXTURE_TRANSPARENCY, imageTexture);
+					}
+					else if (sdlEvent.wheel.y < 0) {
+						VIEWPORT_ZOOM = std::max(ZOOM_MIN, VIEWPORT_ZOOM / ZOOM_SCROLL_SENSITIVITY);
 
-							//correct positioning
-							VIEWPORT_X /= ZOOM_SCROLL_SENSITIVITY;
-							VIEWPORT_Y /= ZOOM_SCROLL_SENSITIVITY;
+						//correct positioning
+						VIEWPORT_X /= ZOOM_SCROLL_SENSITIVITY;
+						VIEWPORT_Y /= ZOOM_SCROLL_SENSITIVITY;
 
-							draw(&win, TEXTURE_TRANSPARENCY, imageTexture);
-						}
+						draw(&win, TEXTURE_TRANSPARENCY, imageTexture);
 					}
 					break;
 				case SDL_MOUSEBUTTONDOWN:
