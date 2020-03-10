@@ -65,6 +65,7 @@ bool MOUSE_CLICK_STATE_LEFT = false;
 
 /* SETTINGS */
 std::string PROGRAM_CWD;
+std::string FILENAME_IMAGE;
 
 const std::string FILENAME_SETTINGS = "settings.cfg";
 const int settingDataSize = sizeof(WINDOW_X)
@@ -104,6 +105,9 @@ void readSettings() {
 	}
 }
 
+/**
+* writeSettings - Collect window settings and write to settings file, if it can be written in a valid location
+*/
 void writeSettings() {
 	//working directory wasn't set, don't write anything
 	if (!PROGRAM_CWD.length()) return;
@@ -230,8 +234,12 @@ int main(int argc, char * argv[]) {
 	PROGRAM_CWD = std::string(argv[0]);
 	//strip executable name if path exists
 	int pathLength = PROGRAM_CWD.rfind('\\');
-	if (pathLength > 0) PROGRAM_CWD.resize(pathLength);
-	else PROGRAM_CWD = "";
+	if (pathLength > 0) {
+		PROGRAM_CWD.resize(pathLength);
+	}
+	else {
+		PROGRAM_CWD = "";
+	}
 
 	SDL_Event sdlEvent;
 	SDL_Surface* imageSurface;
@@ -277,6 +285,7 @@ int main(int argc, char * argv[]) {
 	TEXTURE_TRANSPARENCY = SDL_CreateTextureFromSurface(win.renderer, transparency_tmp);
 	SDL_FreeSurface(transparency_tmp);
 
+	//draw background texture before continuing to show program is loading
 	draw(&win, TEXTURE_TRANSPARENCY, nullptr);
 
 	//try loading image from filename
@@ -288,6 +297,14 @@ int main(int argc, char * argv[]) {
 		return 1;
 	}
 
+	//determine image filename
+	FILENAME_IMAGE = std::string(argv[1]);
+	pathLength = FILENAME_IMAGE.rfind('\\');
+	//strip path if it exists
+	if (pathLength > 0) {
+		FILENAME_IMAGE = FILENAME_IMAGE.substr(pathLength + 1);
+	}
+
 	IMAGE_HEIGHT = imageSurface->h;
 	IMAGE_WIDTH = imageSurface->w;
 
@@ -295,6 +312,10 @@ int main(int argc, char * argv[]) {
 	imageTexture = SDL_CreateTextureFromSurface(win.renderer, imageSurface);
 	SDL_FreeSurface(imageSurface);
 
+	//update window title with image filename
+	win.setTitle((FILENAME_IMAGE + " - " + APPLICATION_TITLE).c_str());
+
+	//finally draw image and background
 	draw(&win, TEXTURE_TRANSPARENCY, imageTexture);
 
 	int mouseX;
@@ -430,6 +451,7 @@ int main(int argc, char * argv[]) {
 * Possible: Image deletion?
 * Possible: Image rotation?
 * Cursor icon state updates?
+* Don't exist if passed no parameters... show pop-up?
 */
 
 /* KNOWN PROBLEMS:
