@@ -17,6 +17,9 @@ NICK WILSON
 #include <chrono>
 #include <cmath>
 #include <fstream>
+#include <filesystem>
+
+#include <Windows.h>
 
 /* /// CONSTANTS /// */
 
@@ -64,7 +67,7 @@ SDL_Texture* TEXTURE_TRANSPARENCY;
 bool MOUSE_CLICK_STATE_LEFT = false;
 
 /* SETTINGS */
-std::string PROGRAM_CWD;
+std::filesystem::path PATH_PROGRAM_CWD;
 std::string FILENAME_IMAGE;
 
 const std::string FILENAME_SETTINGS = "settings.cfg";
@@ -81,11 +84,11 @@ const int settingDataSize = sizeof(WINDOW_X)
 */
 void readSettings() {
 	//if CWD is length 0, program was run from terminal and is CWD is unknown. Use default settings.
-	if (!PROGRAM_CWD.length()) {
+	if (PATH_PROGRAM_CWD.empty()) {
 		std::cerr << LOG_NOTICE << "Run Viewer using full path to load settings file. Using defaults." << std::endl;
 		return;
 	}
-	std::ifstream inputStream(PROGRAM_CWD + '\\' + FILENAME_SETTINGS, std::ifstream::in | std::ifstream::binary | std::ifstream::ate);
+	std::ifstream inputStream(PATH_PROGRAM_CWD / FILENAME_SETTINGS, std::ifstream::in | std::ifstream::binary | std::ifstream::ate);
 	if (inputStream.is_open()) {
 		if (inputStream.tellg() >= settingDataSize) {
 			inputStream.seekg(std::ios_base::beg);
@@ -110,8 +113,8 @@ void readSettings() {
 */
 void writeSettings() {
 	//working directory wasn't set, don't write anything
-	if (!PROGRAM_CWD.length()) return;
-	std::ofstream outputStream(PROGRAM_CWD + '\\' + FILENAME_SETTINGS, std::ifstream::out | std::ifstream::binary | std::ifstream::trunc);
+	if (PATH_PROGRAM_CWD.empty()) return;
+	std::ofstream outputStream(PATH_PROGRAM_CWD / FILENAME_SETTINGS, std::ifstream::out | std::ifstream::binary | std::ifstream::trunc);
 	if (outputStream.is_open()) {
 		//if window was 'moved' during resize, discard
 		if (!WINDOW_MOVED) {
@@ -227,19 +230,8 @@ void draw(Window* win, SDL_Texture* tile_texture, SDL_Texture* image_texture) {
 /**
 * main	- Setup, load image, then manage user input
 */
-int main(int argc, char * argv[]) {
+int main(int argc, char* argv[]) {
 	bool quit = false;
-
-	//pull current directory from first argument
-	PROGRAM_CWD = std::string(argv[0]);
-	//strip executable name if path exists
-	int pathLength = PROGRAM_CWD.rfind('\\');
-	if (pathLength > 0) {
-		PROGRAM_CWD.resize(pathLength);
-	}
-	else {
-		PROGRAM_CWD = "";
-	}
 
 	SDL_Event sdlEvent;
 	SDL_Surface* imageSurface;
@@ -250,6 +242,10 @@ int main(int argc, char * argv[]) {
 		std::cerr << LOG_ERROR << "SDL COULD NOT BE INITIALIZED!" << std::endl;
 		return 1;
 	}
+
+	char EXE_PATH[MAX_PATH];
+	GetModuleFileNameA(NULL, EXE_PATH, MAX_PATH); //Windows system call to get executable's path
+	PATH_PROGRAM_CWD = std::filesystem::path(EXE_PATH).parent_path(); //Collect parent folder path for CWD
 
 	readSettings();
 
@@ -297,14 +293,6 @@ int main(int argc, char * argv[]) {
 		return 1;
 	}
 
-	//determine image filename
-	FILENAME_IMAGE = std::string(argv[1]);
-	pathLength = FILENAME_IMAGE.rfind('\\');
-	//strip path if it exists
-	if (pathLength > 0) {
-		FILENAME_IMAGE = FILENAME_IMAGE.substr(pathLength + 1);
-	}
-
 	IMAGE_HEIGHT = imageSurface->h;
 	IMAGE_WIDTH = imageSurface->w;
 
@@ -312,6 +300,8 @@ int main(int argc, char * argv[]) {
 	imageTexture = SDL_CreateTextureFromSurface(win.renderer, imageSurface);
 	SDL_FreeSurface(imageSurface);
 
+	//determine image filename
+	FILENAME_IMAGE = std::filesystem::path(argv[1]).filename().string();
 	//update window title with image filename
 	win.setTitle((FILENAME_IMAGE + " - " + APPLICATION_TITLE).c_str());
 
