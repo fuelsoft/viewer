@@ -492,6 +492,24 @@ int main(int argc, char* argv[]) {
 							MOUSE_CLICK_STATE_LEFT = true;
 							SDL_GetMouseState(&mouseX, &mouseY);
 							break;
+						case SDL_BUTTON_MIDDLE:
+							resetViewport();
+							draw(&win, TEXTURE_TRANSPARENCY, imageTexture);
+							break;
+						case SDL_BUTTON_X1:
+							//bind mouse back button to left arrow to return to previous image
+							SDL_Event sdlEBack;
+							sdlEBack.type = SDL_KEYDOWN;
+							sdlEBack.key.keysym.sym = SDLK_LEFT;
+							SDL_PushEvent(&sdlEBack);
+							break;
+						case SDL_BUTTON_X2:
+							//bind mouse next button to right arrow to advance to next image
+							SDL_Event sdlENext;
+							sdlENext.type = SDL_KEYDOWN;
+							sdlENext.key.keysym.sym = SDLK_RIGHT;
+							SDL_PushEvent(&sdlENext);
+							break;
 						default:
 							break;
 					}
