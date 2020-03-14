@@ -18,6 +18,7 @@ NICK WILSON
 #include <cmath>
 #include <fstream>
 #include <filesystem>
+#include <vector>
 
 #include <Windows.h>
 
@@ -68,7 +69,7 @@ bool MOUSE_CLICK_STATE_LEFT = false;
 
 /* SETTINGS */
 std::filesystem::path PATH_PROGRAM_CWD;
-std::string FILENAME_IMAGE;
+std::filesystem::path PATH_FILE_IMAGE;
 
 const std::string FILENAME_SETTINGS = "settings.cfg";
 const int settingDataSize = sizeof(WINDOW_X)
@@ -76,6 +77,22 @@ const int settingDataSize = sizeof(WINDOW_X)
 							+ sizeof(WINDOW_WIDTH)
 							+ sizeof(WINDOW_HEIGHT)
 							+ sizeof(WINDOW_MAXIMIZED);
+
+std::vector<std::filesystem::path> FILES_ADJACENT_IMAGES;
+int IMAGE_FILE_INDEX = 0;
+
+/* From sdl_image documentation */
+/* Less common formats omitted */
+const std::string SUPPORTED_FILETYPES[] = {
+	".tga",
+	".bmp",
+	".gif",
+	".jpg",
+	".jpeg",
+	".tif",
+	".tiff",
+	".png"
+};
 
 /* /// CODE /// */
 
@@ -171,7 +188,7 @@ void redrawImage(Window* win, SDL_Texture* imageTexture) {
 			//vertical adjustment
 			int yPos = (WINDOW_HEIGHT - imageTargetHeight * VIEWPORT_ZOOM)/2 + VIEWPORT_Y;
 
-			SDL_Rect windowDestination = {xPos, yPos, WINDOW_WIDTH * VIEWPORT_ZOOM, imageTargetHeight * VIEWPORT_ZOOM};
+			SDL_Rect windowDestination = {xPos, yPos, (int) (WINDOW_WIDTH * VIEWPORT_ZOOM), (int) (imageTargetHeight * VIEWPORT_ZOOM)};
 
 			SDL_RenderCopy(win->renderer, imageTexture, 0, &windowDestination);
 		}
@@ -187,7 +204,7 @@ void redrawImage(Window* win, SDL_Texture* imageTexture) {
 			//vertical adjustment
 			int yPos = (WINDOW_HEIGHT - WINDOW_HEIGHT * VIEWPORT_ZOOM)/2 + VIEWPORT_Y;
 
-			SDL_Rect windowDestination = {xPos, yPos, imageTargetWidth * VIEWPORT_ZOOM, WINDOW_HEIGHT * VIEWPORT_ZOOM};
+			SDL_Rect windowDestination = {xPos, yPos, (int) (imageTargetWidth * VIEWPORT_ZOOM), (int) (WINDOW_HEIGHT * VIEWPORT_ZOOM)};
 			SDL_RenderCopy(win->renderer, imageTexture, 0, &windowDestination);
 		}
 	}
@@ -195,7 +212,7 @@ void redrawImage(Window* win, SDL_Texture* imageTexture) {
 	else {
 		int xPos = (WINDOW_WIDTH - IMAGE_WIDTH * VIEWPORT_ZOOM)/2 + VIEWPORT_X;
 		int yPos = (WINDOW_HEIGHT - IMAGE_HEIGHT * VIEWPORT_ZOOM)/2 + VIEWPORT_Y;
-		SDL_Rect windowDestination = {xPos, yPos, IMAGE_WIDTH * VIEWPORT_ZOOM, IMAGE_HEIGHT * VIEWPORT_ZOOM};
+		SDL_Rect windowDestination = {xPos, yPos, (int) (IMAGE_WIDTH * VIEWPORT_ZOOM), (int) (IMAGE_HEIGHT * VIEWPORT_ZOOM)};
 		SDL_RenderCopy(win->renderer, imageTexture, 0, &windowDestination);
 	}
 }
@@ -225,6 +242,19 @@ void draw(Window* win, SDL_Texture* tile_texture, SDL_Texture* image_texture) {
 	if (tile_texture) drawTileTexture(win, tile_texture);
 	if (image_texture) redrawImage(win, image_texture);
 	SDL_RenderPresent(win->renderer);
+}
+
+/**
+* formatSupport	- Compare file extension provided to known list to confirm support
+* extension 	> File extension as String
+* return - int 	< Index of extension in list or -1 if not found 
+*/
+int formatSupport(std::string extension) {
+	for (uint8_t i = 0; i < std::size(SUPPORTED_FILETYPES); i++) {
+		//std::cout << SUPPORTED_FILETYPES[i] << " - " << extension << std::endl;
+		if (!extension.compare(SUPPORTED_FILETYPES[i])) return (int) i;
+	}
+	return -1;
 }
 
 /**
@@ -261,11 +291,11 @@ int main(int argc, char* argv[]) {
 
 	//try to improve zoom quality by improving sampling technique
 	if (SDL_SetHint(SDL_HINT_RENDER_SCALE_QUALITY, "1")) {
-		std::cout << LOG_NOTICE << "Set filtering to linear" << std::endl;
+		std::cout << LOG_NOTICE << "Set filtering to linear." << std::endl;
 	}
 	//note failure and continue with default sampling
 	else {
-		std::cout << LOG_NOTICE << "Sampling defaulting to nearest neighbour" << std::endl;
+		std::cout << LOG_NOTICE << "Sampling defaulting to nearest neighbour." << std::endl;
 	}
 
 	//create checkerboard background texture for transparent images
@@ -301,12 +331,27 @@ int main(int argc, char* argv[]) {
 	SDL_FreeSurface(imageSurface);
 
 	//determine image filename
-	FILENAME_IMAGE = std::filesystem::path(argv[1]).filename().string();
+	PATH_FILE_IMAGE = std::filesystem::path(argv[1]);
 	//update window title with image filename
-	win.setTitle((FILENAME_IMAGE + " - " + APPLICATION_TITLE).c_str());
+	win.setTitle((PATH_FILE_IMAGE.filename().string() + " - " + APPLICATION_TITLE).c_str());
 
 	//finally draw image and background
 	draw(&win, TEXTURE_TRANSPARENCY, imageTexture);
+
+	//iterate image folder and mark position of currently open image
+	int pos = 0;
+	for(auto& entry : std::filesystem::directory_iterator(PATH_FILE_IMAGE.parent_path())) {
+		//test that file is real file not link, folder, etc. and check it is a supported image format
+		if (std::filesystem::is_regular_file(entry) && (formatSupport(entry.path().extension().string()) >= 0)) {
+			//add file to list of images
+			FILES_ADJACENT_IMAGES.push_back(entry.path());
+			//if this is the image currently open, record position
+			if (entry.path() == PATH_FILE_IMAGE) IMAGE_FILE_INDEX = pos;
+			pos++;
+		}
+	}
+
+	std::cout << LOG_NOTICE << "Found " << FILES_ADJACENT_IMAGES.size() << " images adjacent." << std::endl;
 
 	int mouseX;
 	int mouseY;
@@ -441,7 +486,8 @@ int main(int argc, char* argv[]) {
 * Possible: Image deletion?
 * Possible: Image rotation?
 * Cursor icon state updates?
-* Don't exist if passed no parameters... show pop-up?
+* Don't exit if passed no parameters... show pop-up?
+* Handle capitalization in file extensions
 */
 
 /* KNOWN PROBLEMS:
