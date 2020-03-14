@@ -79,7 +79,7 @@ const int settingDataSize = sizeof(WINDOW_X)
 							+ sizeof(WINDOW_MAXIMIZED);
 
 std::vector<std::filesystem::path> FILES_ADJACENT_IMAGES;
-int IMAGE_FILE_INDEX = 0;
+uint32_t IMAGE_FILE_INDEX = 0;
 
 /* From sdl_image documentation */
 /* Less common formats omitted */
@@ -232,6 +232,44 @@ void drawTileTexture(Window* win, SDL_Texture* tileTexture) {
 }
 
 /**
+* loadTextureFromFile	- Load a file and convert it to an SDL_Texture
+* filePath 				> The path to the image to load
+* win					> Target Window object
+* imageTexture 			> Image as SDL_Texture
+*/
+int loadTextureFromFile(std::string filePath, Window* win, SDL_Texture** imageTexture) {
+	//try loading image from filename
+	SDL_Surface* imageSurface = IMG_Load(filePath.c_str());
+
+	//image load call returned null, indicating failure
+	if (!imageSurface) {
+		std::cerr << LOG_ERROR << IMG_GetError() << std::endl;
+		return 1;
+	}
+
+	IMAGE_HEIGHT = imageSurface->h;
+	IMAGE_WIDTH = imageSurface->w;
+
+	//clear old texture
+	SDL_DestroyTexture(*imageTexture);
+
+	//create hardware accelerated texture from image data and free surface
+	*imageTexture = SDL_CreateTextureFromSurface(win->renderer, imageSurface);
+
+	SDL_FreeSurface(imageSurface);
+	return 0;
+}
+
+/**
+* resetViewport - It was a bit redundant pasting the same 3 lines over and over
+*/
+void resetViewport() {
+	VIEWPORT_ZOOM = 1.0;
+	VIEWPORT_X = 0;
+	VIEWPORT_Y = 0;
+}
+
+/**
 * draw			- Clear display, then draw tiles and image (if provided)
 * win 			> Target Window object
 * tileTexture 	> Texture as SDL_Texture to tile
@@ -247,11 +285,10 @@ void draw(Window* win, SDL_Texture* tile_texture, SDL_Texture* image_texture) {
 /**
 * formatSupport	- Compare file extension provided to known list to confirm support
 * extension 	> File extension as String
-* return - int 	< Index of extension in list or -1 if not found 
+* return - int 	< Index of extension in list or -1 if not found
 */
 int formatSupport(std::string extension) {
 	for (uint8_t i = 0; i < std::size(SUPPORTED_FILETYPES); i++) {
-		//std::cout << SUPPORTED_FILETYPES[i] << " - " << extension << std::endl;
 		if (!extension.compare(SUPPORTED_FILETYPES[i])) return (int) i;
 	}
 	return -1;
@@ -264,7 +301,6 @@ int main(int argc, char* argv[]) {
 	bool quit = false;
 
 	SDL_Event sdlEvent;
-	SDL_Surface* imageSurface;
 	SDL_Texture* imageTexture;
 
 	/* Confirm video is available and set up */
@@ -314,21 +350,11 @@ int main(int argc, char* argv[]) {
 	//draw background texture before continuing to show program is loading
 	draw(&win, TEXTURE_TRANSPARENCY, nullptr);
 
-	//try loading image from filename
-	imageSurface = IMG_Load(argv[1]);
-
-	//image load call returned null, indicating failure
-	if (!imageSurface) {
+	//load up the image passed in
+	if (loadTextureFromFile(std::string(argv[1]), &win, &imageTexture)) {
 		std::cerr << LOG_ERROR << IMG_GetError() << std::endl;
 		return 1;
 	}
-
-	IMAGE_HEIGHT = imageSurface->h;
-	IMAGE_WIDTH = imageSurface->w;
-
-	//create hardware accelerated texture from image data and free surface
-	imageTexture = SDL_CreateTextureFromSurface(win.renderer, imageSurface);
-	SDL_FreeSurface(imageSurface);
 
 	//determine image filename
 	PATH_FILE_IMAGE = std::filesystem::path(argv[1]);
@@ -403,16 +429,41 @@ int main(int argc, char* argv[]) {
 							draw(&win, TEXTURE_TRANSPARENCY, imageTexture);
 							break;
 						case SDLK_KP_0: //keypad 0, reset zoom and positioning
-							VIEWPORT_ZOOM = 1.0;
-							VIEWPORT_X = 0;
-							VIEWPORT_Y = 0;
+							resetViewport();
 							draw(&win, TEXTURE_TRANSPARENCY, imageTexture);
 							break;
 						case SDLK_ESCAPE:
 							quit = true;
 							break;
+						//previous image
+						case SDLK_LEFT:
+							//move back
+							if (IMAGE_FILE_INDEX == 0) IMAGE_FILE_INDEX = FILES_ADJACENT_IMAGES.size() - 1; //loop back to end of image file list
+							else IMAGE_FILE_INDEX--;
+							draw(&win, TEXTURE_TRANSPARENCY, nullptr); //draw checkerboard over old image while we wait
+							win.setTitle((FILES_ADJACENT_IMAGES[IMAGE_FILE_INDEX].filename().string() + " - " + APPLICATION_TITLE).c_str()); //update window title
+							if (loadTextureFromFile(FILES_ADJACENT_IMAGES[IMAGE_FILE_INDEX].string(), &win, &imageTexture)) { //if call returned non-zero, there was an error
+								std::cerr << LOG_ERROR << IMG_GetError() << std::endl;
+								break;
+							}
+							resetViewport(); //new image so reset zoom and positioning
+							draw(&win, TEXTURE_TRANSPARENCY, imageTexture); //draw new image
+							break;
+						//next image
+						case SDLK_RIGHT:
+							IMAGE_FILE_INDEX++; //move forward
+							if (IMAGE_FILE_INDEX >= FILES_ADJACENT_IMAGES.size()) IMAGE_FILE_INDEX = 0; //loop back to start of image file list
+							draw(&win, TEXTURE_TRANSPARENCY, nullptr); //draw checkerboard over old image while we wait
+							win.setTitle((FILES_ADJACENT_IMAGES[IMAGE_FILE_INDEX].filename().string() + " - " + APPLICATION_TITLE).c_str()); //update window title
+							if (loadTextureFromFile(FILES_ADJACENT_IMAGES[IMAGE_FILE_INDEX].string(), &win, &imageTexture)) { //if call returned non-zero, there was an error
+								std::cerr << LOG_ERROR << IMG_GetError() << std::endl;
+								break;
+							}
+							resetViewport(); //new image so reset zoom and positioning
+							draw(&win, TEXTURE_TRANSPARENCY, imageTexture); //draw new image
+							break;
 					}
-						break;
+					break;
 				case SDL_MOUSEWHEEL:
 					if (sdlEvent.wheel.y > 0) {
 						VIEWPORT_ZOOM = std::min(ZOOM_MAX, VIEWPORT_ZOOM * ZOOM_SCROLL_SENSITIVITY);
