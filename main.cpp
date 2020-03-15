@@ -546,9 +546,7 @@ int main(int argc, char* argv[]) {
 
 /* TODO:
 * Add key to set zoom to 1:1 pixel ratio
-* Filename in title
 * Possible: partial image metadata? PNG image data support from ProjectPNG?
-* Navigate forward/backwards in current directory
 * Animated GIFs -> https://stackoverflow.com/questions/36267833/c-sdl2-how-do-i-play-a-gif-in-sdl2/36410301#36410301
 * Zoom on mouse instead of window center
 * Stop image from being moved off-screen
@@ -563,14 +561,4 @@ int main(int argc, char* argv[]) {
 * ICO: Files stored as "NEW PNG" type do not load with SDL_image
 * ICO: Files with partial transparent pixels do not render correctly
 * GIF: Animated sequences only load the first frame
-*/
-
-/* NOTES:
-* - Working directory implementation will only work when program
-*	is run using it's full path (drag and drop, as default program),
-*	NOT directly from folder using terminal.
-*	This is not considered a high-priority fix due to complexity
-*	of doing it 'the right way' and minimal downside.
-*	It should happen infrequently and when it does, the program
-*	will just use the default settings.
 */
