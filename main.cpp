@@ -301,7 +301,7 @@ int main(int argc, char* argv[]) {
 	bool quit = false;
 
 	SDL_Event sdlEvent;
-	SDL_Texture* imageTexture;
+	SDL_Texture* imageTexture = nullptr;
 
 	/* Confirm video is available and set up */
 	if (SDL_Init(SDL_INIT_VIDEO) < 0) {
