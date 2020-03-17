@@ -83,15 +83,24 @@ uint32_t IMAGE_FILE_INDEX = 0;
 
 /* From sdl_image documentation */
 /* Less common formats omitted */
+/* TODO: Remove uppercase duplicates */
 const std::string SUPPORTED_FILETYPES[] = {
-	".tga",
-	".bmp",
-	".gif",
 	".jpg",
 	".jpeg",
+	".png",
+	".gif",
+	".bmp",
 	".tif",
 	".tiff",
-	".png"
+	".tga",
+	".JPG",
+	".JPEG",
+	".PNG",
+	".GIF",
+	".BMP",
+	".TIF",
+	".TIFF",
+	".TGA",
 };
 
 /* /// CODE /// */
