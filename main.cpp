@@ -449,7 +449,7 @@ int main(int argc, char* argv[]) {
 							//move back
 							if (IMAGE_FILE_INDEX == 0) IMAGE_FILE_INDEX = FILES_ADJACENT_IMAGES.size() - 1; //loop back to end of image file list
 							else IMAGE_FILE_INDEX--;
-							draw(&win, TEXTURE_TRANSPARENCY, nullptr); //draw checkerboard over old image while we wait
+							//draw(&win, TEXTURE_TRANSPARENCY, nullptr); //draw checkerboard over old image while we wait
 							win.setTitle((FILES_ADJACENT_IMAGES[IMAGE_FILE_INDEX].filename().string() + " - " + APPLICATION_TITLE).c_str()); //update window title
 							if (loadTextureFromFile(FILES_ADJACENT_IMAGES[IMAGE_FILE_INDEX].string(), &win, &imageTexture)) { //if call returned non-zero, there was an error
 								std::cerr << LOG_ERROR << IMG_GetError() << std::endl;
@@ -462,7 +462,7 @@ int main(int argc, char* argv[]) {
 						case SDLK_RIGHT:
 							IMAGE_FILE_INDEX++; //move forward
 							if (IMAGE_FILE_INDEX >= FILES_ADJACENT_IMAGES.size()) IMAGE_FILE_INDEX = 0; //loop back to start of image file list
-							draw(&win, TEXTURE_TRANSPARENCY, nullptr); //draw checkerboard over old image while we wait
+							//draw(&win, TEXTURE_TRANSPARENCY, nullptr); //draw checkerboard over old image while we wait
 							win.setTitle((FILES_ADJACENT_IMAGES[IMAGE_FILE_INDEX].filename().string() + " - " + APPLICATION_TITLE).c_str()); //update window title
 							if (loadTextureFromFile(FILES_ADJACENT_IMAGES[IMAGE_FILE_INDEX].string(), &win, &imageTexture)) { //if call returned non-zero, there was an error
 								std::cerr << LOG_ERROR << IMG_GetError() << std::endl;
