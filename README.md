@@ -65,21 +65,22 @@ As listed [here](https://www.libsdl.org/projects/SDL_image/docs/SDL_image.pdf#pa
 * Setting up a version of GCC new enough to support C++17 is a really bad time on Windows and unless you really need to build from source, I highly recommend you use one of the builds. Otherwise, I'll direct you to [MSYS2](https://www.msys2.org/)'s homepage.
 
 ### TODO:
-This list is maintained in `main.cpp` as I think of things - check there for an up to date copy.
 * Add key to set zoom to 1:1 pixel ratio
-* Possible: partial image metadata? PNG image data support from ProjectPNG?
+* Partial image metadata? PNG image data support from ProjectPNG?
 * Animated GIFs
 * Zoom on mouse instead of window center
 * Stop image from being moved off-screen
-* Possible: Image deletion?
-* Possible: Image rotation?
+* Image deletion?
+* Image rotation?
 * Cursor icon state updates?
 * Don't exit if passed no parameters... show pop-up?
-* Handle capitalization in file extensions
+* Handle capitalization in file extensions better
 
 ### Known Problems:
 * ICO: Files stored as "NEW PNG" type do not load with SDL_image
 * ICO: Files with partially transparent pixels do not render correctly
 * GIF: Animated sequences only load the first frame
+* ALL: Images loaded from RO-type media (cell phones, cameras) are copied to a temp folder by Windows before being loaded. 
+This breaks in-folder navigation. It's unclear to me how WPV works around this.
 
 [1]: https://www.libsdl.org/projects/SDL_image/docs/SDL_image.pdf#page=21&zoom=auto,-205,720

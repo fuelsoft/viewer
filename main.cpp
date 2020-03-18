@@ -552,22 +552,3 @@ int main(int argc, char* argv[]) {
 
 	return 0;
 }
-
-/* TODO:
-* Add key to set zoom to 1:1 pixel ratio
-* Possible: partial image metadata? PNG image data support from ProjectPNG?
-* Animated GIFs -> https://stackoverflow.com/questions/36267833/c-sdl2-how-do-i-play-a-gif-in-sdl2/36410301#36410301
-* Zoom on mouse instead of window center
-* Stop image from being moved off-screen
-* Possible: Image deletion?
-* Possible: Image rotation?
-* Cursor icon state updates?
-* Don't exit if passed no parameters... show pop-up?
-* Handle capitalization in file extensions
-*/
-
-/* KNOWN PROBLEMS:
-* ICO: Files stored as "NEW PNG" type do not load with SDL_image
-* ICO: Files with partial transparent pixels do not render correctly
-* GIF: Animated sequences only load the first frame
-*/
