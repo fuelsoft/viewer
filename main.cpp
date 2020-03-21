@@ -331,6 +331,10 @@ int main(int argc, char* argv[]) {
 	//no file passed in
 	if (argc < 2) {
 		std::cerr << LOG_ERROR << "No filename provided!" << std::endl;
+		SDL_ShowSimpleMessageBox(SDL_MESSAGEBOX_ERROR,
+								"No filename provided!",
+								"Please provide a path to an image file!",
+								win.window);
 		return 1;
 	}
 
