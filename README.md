@@ -72,8 +72,6 @@ As listed [here](https://www.libsdl.org/projects/SDL_image/docs/SDL_image.pdf#pa
 * Stop image from being moved off-screen
 * Image deletion?
 * Image rotation?
-* Cursor icon state updates?
-* Don't exit if passed no parameters... show pop-up?
 * Handle capitalization in file extensions better
 
 ### Known Problems:

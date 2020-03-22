@@ -111,7 +111,7 @@ const std::string SUPPORTED_FILETYPES[] = {
 void readSettings() {
 	//if CWD is length 0, program was run from terminal and is CWD is unknown. Use default settings.
 	if (PATH_PROGRAM_CWD.empty()) {
-		std::cerr << LOG_NOTICE << "Run Viewer using full path to load settings file. Using defaults." << std::endl;
+		std::cerr << LOG_NOTICE << "Unable to load settings file. Using defaults." << std::endl;
 		return;
 	}
 	std::ifstream inputStream(PATH_PROGRAM_CWD / FILENAME_SETTINGS, std::ifstream::in | std::ifstream::binary | std::ifstream::ate);
@@ -309,6 +309,29 @@ int formatSupport(std::string extension) {
 int main(int argc, char* argv[]) {
 	bool quit = false;
 
+	/* process any flags */
+	for (int i = 0; i < argc; i++) {
+		if (argv[i][0] == '-') {
+			switch (argv[i][1]) {
+				case 'v': //-v will print version info
+					std::cout << "=== " << APPLICATION_TITLE << " ===" << std::endl;
+					std::cout << "Built " << __DATE__ << " " << __TIME__ << std::endl;
+					std::cout << "GCC " << __VERSION__ << std::endl;
+					std::cout << "STD " << __cplusplus << std::endl;
+
+					SDL_version compile_version;
+					SDL_GetVersion(&compile_version);
+					std::cout << "SDL " << (int) compile_version.major << "." << (int) compile_version.minor << "." << (int) compile_version.patch << std::endl;
+					SDL_IMAGE_VERSION(&compile_version);
+					std::cout << "SDL Image " << (int) compile_version.major << "." << (int) compile_version.minor << "." << (int) compile_version.patch << std::endl;
+					return 0;
+				default: ///no other flags defined yet
+					std::cout << "Invalid flag: " << argv[i] << std::endl;
+					return 0;
+			}
+		}
+	}
+
 	SDL_Event sdlEvent;
 	SDL_Texture* imageTexture = nullptr;
 
@@ -330,7 +353,7 @@ int main(int argc, char* argv[]) {
 
 	//no file passed in
 	if (argc < 2) {
-		std::cerr << LOG_ERROR << "No filename provided!" << std::endl;
+		std::cerr << LOG_ERROR << "No arguments provided!" << std::endl;
 		SDL_ShowSimpleMessageBox(SDL_MESSAGEBOX_ERROR,
 								"No filename provided!",
 								"Please provide a path to an image file!",
@@ -370,7 +393,7 @@ int main(int argc, char* argv[]) {
 	}
 
 	//determine image filename
-	PATH_FILE_IMAGE = std::filesystem::path(argv[1]);
+	PATH_FILE_IMAGE = std::filesystem::canonical(std::filesystem::path(argv[1]));
 	//update window title with image filename
 	win.setTitle((PATH_FILE_IMAGE.filename().string() + " - " + APPLICATION_TITLE).c_str());
 
