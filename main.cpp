@@ -20,6 +20,10 @@ NICK WILSON
 #include <filesystem>
 #include <vector>
 
+#ifndef WIN32_LEAN_AND_MEAN
+	#define WIN32_LEAN_AND_MEAN
+#endif
+
 #include <Windows.h>
 
 /* /// CONSTANTS /// */
@@ -59,10 +63,15 @@ const float ZOOM_MIN = (1.0/16.0);  //-4x zoom
 const float ZOOM_MAX = 256;         // 8x zoom
 const float ZOOM_SCROLL_SENSITIVITY = 1.2;
 
+bool DISPLAY_MODE_DARK = true;
+
 const int TEXTURE_CHECKERBOARD_RESOLUTION = 32;
-const uint32_t COLOUR_CHECKERBOARD_LIGHT = 0x00141414;
-const uint32_t COLOUR_CHECKERBOARD_DARK = 0x000D0D0D;
-SDL_Texture* TEXTURE_TRANSPARENCY;
+const uint32_t CHECKERBOARD_DARK_LIGHT = 0x00141414;
+const uint32_t CHECKERBOARD_DARK_DARK = 0x000D0D0D;
+const uint32_t CHECKERBOARD_LIGHT_LIGHT = 0x00F3F3F3;
+const uint32_t CHECKERBOARD_LIGHT_DARK = 0x00DEDEDE;
+SDL_Texture* TEXTURE_TRANSPARENCY_DARK;
+SDL_Texture* TEXTURE_TRANSPARENCY_LIGHT;
 
 /* INPUT */
 bool MOUSE_CLICK_STATE_LEFT = false;
@@ -370,21 +379,35 @@ int main(int argc, char* argv[]) {
 		std::cout << LOG_NOTICE << "Sampling defaulting to nearest neighbour." << std::endl;
 	}
 
-	//create checkerboard background texture for transparent images
-	SDL_Surface* transparency_tmp = SDL_CreateRGBSurface(0, TEXTURE_CHECKERBOARD_RESOLUTION, TEXTURE_CHECKERBOARD_RESOLUTION, 32, 0, 0, 0, 0);
-	uint32_t* pixeldata = (uint32_t*) transparency_tmp->pixels;
+	//create checkerboard background textures for transparent images
+	SDL_Surface* transparency_tmp_d = SDL_CreateRGBSurface(0, TEXTURE_CHECKERBOARD_RESOLUTION, TEXTURE_CHECKERBOARD_RESOLUTION, 32, 0, 0, 0, 0);
+	SDL_Surface* transparency_tmp_l = SDL_CreateRGBSurface(0, TEXTURE_CHECKERBOARD_RESOLUTION, TEXTURE_CHECKERBOARD_RESOLUTION, 32, 0, 0, 0, 0);
+
+	uint32_t* pixeldata_d = (uint32_t*) transparency_tmp_d->pixels;
+	uint32_t* pixeldata_l = (uint32_t*) transparency_tmp_l->pixels;
+
 	for (int h = 0; h < TEXTURE_CHECKERBOARD_RESOLUTION; h++) {
 		for (int w = 0; w < TEXTURE_CHECKERBOARD_RESOLUTION; w++) {
 			int p = TEXTURE_CHECKERBOARD_RESOLUTION / 2;
-			(*(pixeldata + h * TEXTURE_CHECKERBOARD_RESOLUTION + w)) = (((h < p) ^ (w < p)) ? COLOUR_CHECKERBOARD_LIGHT : COLOUR_CHECKERBOARD_DARK);
+			int offset = h * TEXTURE_CHECKERBOARD_RESOLUTION + w;
+			if ((h < p) ^ (w < p)) {
+				*(pixeldata_d + offset) = CHECKERBOARD_DARK_LIGHT;
+				*(pixeldata_l + offset) = CHECKERBOARD_LIGHT_LIGHT;
+			}
+			else {
+				*(pixeldata_d + offset) = CHECKERBOARD_DARK_DARK;
+				*(pixeldata_l + offset) = CHECKERBOARD_LIGHT_DARK;
+			}
 		}
 	}
 
-	TEXTURE_TRANSPARENCY = SDL_CreateTextureFromSurface(win.renderer, transparency_tmp);
-	SDL_FreeSurface(transparency_tmp);
+	TEXTURE_TRANSPARENCY_DARK = SDL_CreateTextureFromSurface(win.renderer, transparency_tmp_d);
+	TEXTURE_TRANSPARENCY_LIGHT = SDL_CreateTextureFromSurface(win.renderer, transparency_tmp_l);
+	SDL_FreeSurface(transparency_tmp_d);
+	SDL_FreeSurface(transparency_tmp_l);
 
 	//draw background texture before continuing to show program is loading
-	draw(&win, TEXTURE_TRANSPARENCY, nullptr);
+	draw(&win, (DISPLAY_MODE_DARK) ? TEXTURE_TRANSPARENCY_DARK : TEXTURE_TRANSPARENCY_LIGHT, imageTexture);
 
 	//load up the image passed in
 	if (loadTextureFromFile(std::string(argv[1]), &win, &imageTexture)) {
@@ -398,7 +421,7 @@ int main(int argc, char* argv[]) {
 	win.setTitle((PATH_FILE_IMAGE.filename().string() + " - " + APPLICATION_TITLE).c_str());
 
 	//finally draw image and background
-	draw(&win, TEXTURE_TRANSPARENCY, imageTexture);
+	draw(&win, (DISPLAY_MODE_DARK) ? TEXTURE_TRANSPARENCY_DARK : TEXTURE_TRANSPARENCY_LIGHT, imageTexture);
 
 	//iterate image folder and mark position of currently open image
 	int pos = 0;
@@ -450,7 +473,7 @@ int main(int argc, char* argv[]) {
 							WINDOW_PREVIOUS_WIDTH = WINDOW_WIDTH;
 							WINDOW_PREVIOUS_HEIGHT = WINDOW_HEIGHT;
 							SDL_GetWindowSize(win.window, &WINDOW_WIDTH, &WINDOW_HEIGHT);
-							draw(&win, TEXTURE_TRANSPARENCY, imageTexture);
+							draw(&win, (DISPLAY_MODE_DARK) ? TEXTURE_TRANSPARENCY_DARK : TEXTURE_TRANSPARENCY_LIGHT, imageTexture);
 							break;
 					}
 					break;
@@ -458,45 +481,62 @@ int main(int argc, char* argv[]) {
 					switch (sdlEvent.key.keysym.sym) {
 						case SDLK_KP_PLUS: //keypad +, zoom in
 							VIEWPORT_ZOOM = std::min(ZOOM_MAX, VIEWPORT_ZOOM * 2.0f);
-							draw(&win, TEXTURE_TRANSPARENCY, imageTexture);
+							draw(&win, (DISPLAY_MODE_DARK) ? TEXTURE_TRANSPARENCY_DARK : TEXTURE_TRANSPARENCY_LIGHT, imageTexture);
 							break;
 						case SDLK_KP_MINUS: //keypad -, zoom out
 							VIEWPORT_ZOOM = std::max(ZOOM_MIN, VIEWPORT_ZOOM/2.0f);
-							draw(&win, TEXTURE_TRANSPARENCY, imageTexture);
+							draw(&win, (DISPLAY_MODE_DARK) ? TEXTURE_TRANSPARENCY_DARK : TEXTURE_TRANSPARENCY_LIGHT, imageTexture);
 							break;
 						case SDLK_KP_0: //keypad 0, reset zoom and positioning
 							resetViewport();
-							draw(&win, TEXTURE_TRANSPARENCY, imageTexture);
+							draw(&win, (DISPLAY_MODE_DARK) ? TEXTURE_TRANSPARENCY_DARK : TEXTURE_TRANSPARENCY_LIGHT, imageTexture);
 							break;
 						case SDLK_ESCAPE:
 							quit = true;
 							break;
+						case SDLK_TAB:
+							DISPLAY_MODE_DARK = !DISPLAY_MODE_DARK;
+							draw(&win, (DISPLAY_MODE_DARK) ? TEXTURE_TRANSPARENCY_DARK : TEXTURE_TRANSPARENCY_LIGHT, imageTexture);
+							break;
+						case SDLK_DELETE:
+							{
+							bool confirmDelete = IDYES == MessageBox(nullptr, "Are you sure you want to delete this image?", "Delete Image", MB_YESNO | MB_ICONEXCLAMATION);
+							if (confirmDelete) {
+								/* DELETE CALL HERE */
+								FILES_ADJACENT_IMAGES.erase(FILES_ADJACENT_IMAGES.begin() + IMAGE_FILE_INDEX);
+								IMAGE_FILE_INDEX--;
+								SDL_Event sdlENext;
+								sdlENext.type = SDL_KEYDOWN;
+								sdlENext.key.keysym.sym = SDLK_RIGHT;
+								SDL_PushEvent(&sdlENext);
+							}
+							}
+							break;
 						//previous image
-						case SDLK_LEFT:
-							//move back
+						case SDLK_LEFT: //move back
+							if (FILES_ADJACENT_IMAGES.size() == 1) break; //there's only one image in the folder so don't move
 							if (IMAGE_FILE_INDEX == 0) IMAGE_FILE_INDEX = FILES_ADJACENT_IMAGES.size() - 1; //loop back to end of image file list
 							else IMAGE_FILE_INDEX--;
-							//draw(&win, TEXTURE_TRANSPARENCY, nullptr); //draw checkerboard over old image while we wait
 							win.setTitle((FILES_ADJACENT_IMAGES[IMAGE_FILE_INDEX].filename().string() + " - " + APPLICATION_TITLE).c_str()); //update window title
-							if (loadTextureFromFile(FILES_ADJACENT_IMAGES[IMAGE_FILE_INDEX].string(), &win, &imageTexture)) { //if call returned non-zero, there was an error
+							if (loadTextureFromFile(std::filesystem::canonical(FILES_ADJACENT_IMAGES[IMAGE_FILE_INDEX]).string(), &win, &imageTexture)) { //if call returned non-zero, there was an error
 								std::cerr << LOG_ERROR << IMG_GetError() << std::endl;
 								break;
 							}
 							resetViewport(); //new image so reset zoom and positioning
-							draw(&win, TEXTURE_TRANSPARENCY, imageTexture); //draw new image
+							draw(&win, (DISPLAY_MODE_DARK) ? TEXTURE_TRANSPARENCY_DARK : TEXTURE_TRANSPARENCY_LIGHT, imageTexture);
 							break;
 						//next image
-						case SDLK_RIGHT:
-							IMAGE_FILE_INDEX++; //move forward
+						case SDLK_RIGHT: //move forward
+							if (FILES_ADJACENT_IMAGES.size() == 1) break; //there's only one image in the folder so don't move
+							IMAGE_FILE_INDEX++;
 							if (IMAGE_FILE_INDEX >= FILES_ADJACENT_IMAGES.size()) IMAGE_FILE_INDEX = 0; //loop back to start of image file list
-							//draw(&win, TEXTURE_TRANSPARENCY, nullptr); //draw checkerboard over old image while we wait
 							win.setTitle((FILES_ADJACENT_IMAGES[IMAGE_FILE_INDEX].filename().string() + " - " + APPLICATION_TITLE).c_str()); //update window title
-							if (loadTextureFromFile(FILES_ADJACENT_IMAGES[IMAGE_FILE_INDEX].string(), &win, &imageTexture)) { //if call returned non-zero, there was an error
+							if (loadTextureFromFile(std::filesystem::canonical(FILES_ADJACENT_IMAGES[IMAGE_FILE_INDEX]).string(), &win, &imageTexture)) { //if call returned non-zero, there was an error
 								std::cerr << LOG_ERROR << IMG_GetError() << std::endl;
 								break;
 							}
 							resetViewport(); //new image so reset zoom and positioning
-							draw(&win, TEXTURE_TRANSPARENCY, imageTexture); //draw new image
+							draw(&win, (DISPLAY_MODE_DARK) ? TEXTURE_TRANSPARENCY_DARK : TEXTURE_TRANSPARENCY_LIGHT, imageTexture);
 							break;
 					}
 					break;
@@ -510,7 +550,7 @@ int main(int argc, char* argv[]) {
 						VIEWPORT_X *= ZOOM_SCROLL_SENSITIVITY;
 						VIEWPORT_Y *= ZOOM_SCROLL_SENSITIVITY;
 
-						draw(&win, TEXTURE_TRANSPARENCY, imageTexture);
+						draw(&win, (DISPLAY_MODE_DARK) ? TEXTURE_TRANSPARENCY_DARK : TEXTURE_TRANSPARENCY_LIGHT, imageTexture);
 					}
 					else if (sdlEvent.wheel.y < 0) {
 						VIEWPORT_ZOOM = std::max(ZOOM_MIN, VIEWPORT_ZOOM / ZOOM_SCROLL_SENSITIVITY);
@@ -519,7 +559,7 @@ int main(int argc, char* argv[]) {
 						VIEWPORT_X /= ZOOM_SCROLL_SENSITIVITY;
 						VIEWPORT_Y /= ZOOM_SCROLL_SENSITIVITY;
 
-						draw(&win, TEXTURE_TRANSPARENCY, imageTexture);
+						draw(&win, (DISPLAY_MODE_DARK) ? TEXTURE_TRANSPARENCY_DARK : TEXTURE_TRANSPARENCY_LIGHT, imageTexture);
 					}
 					break;
 				case SDL_MOUSEBUTTONDOWN:
@@ -530,7 +570,7 @@ int main(int argc, char* argv[]) {
 							break;
 						case SDL_BUTTON_MIDDLE:
 							resetViewport();
-							draw(&win, TEXTURE_TRANSPARENCY, imageTexture);
+							draw(&win, (DISPLAY_MODE_DARK) ? TEXTURE_TRANSPARENCY_DARK : TEXTURE_TRANSPARENCY_LIGHT, imageTexture);
 							break;
 						case SDL_BUTTON_X1:
 							//bind mouse back button to left arrow to return to previous image
@@ -566,7 +606,7 @@ int main(int argc, char* argv[]) {
 						SDL_GetMouseState(&mouseX, &mouseY);
 						VIEWPORT_X += mouseX - mousePreviousX;
 						VIEWPORT_Y += mouseY - mousePreviousY;
-						draw(&win, TEXTURE_TRANSPARENCY, imageTexture);
+						draw(&win, (DISPLAY_MODE_DARK) ? TEXTURE_TRANSPARENCY_DARK : TEXTURE_TRANSPARENCY_LIGHT, imageTexture);
 					}
 					break;
 
