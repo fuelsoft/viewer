@@ -50,11 +50,13 @@ First, ensure that the executable has all the `.dll` files next to it. There are
 Then call the program by either dragging an image onto Viewer.exe or by running `Viewer.exe <filename>` in a terminal.
 
 ### Controls:
-* Zoom is handled by hitting keypad +/- or scrolling. 
+* Zoom is handled by hitting `Keypad +/-` or scrolling. 
 * Panning is handled by left-clicking and dragging the image. 
-* Zoom and position can be reset by hitting keypad 0 (keypad zero) or center-clicking the mouse.
-* Quit by closing the window or hitting Escape.
-* Navigave to previous/next image in folder with the left and right arrow keys or back/forward buttons on your mouse (if equipped).
+* Zoom and position can be reset by hitting `Keypad 0` (`Keypad Zero`) or center-clicking the mouse.
+* Quit by closing the window or hitting `Escape`.
+* Navigate to previous/next image in folder with the `Left` and `Right` arrow keys or `Back/Forward` buttons on your mouse (if equipped).
+* Toggle between light and dark background with `Tab`.
+* Delete current image with `Delete` - you will be asked to confirm the action first.
 
 ### Supported formats:
 As listed [here](https://www.libsdl.org/projects/SDL_image/docs/SDL_image.pdf#page=8&zoom=auto,-205,547).
