@@ -72,8 +72,7 @@ As listed [here](https://www.libsdl.org/projects/SDL_image/docs/SDL_image.pdf#pa
 * Animated GIFs
 * Zoom on mouse instead of window center
 * Stop image from being moved off-screen
-* Image deletion?
-* Image rotation?
+* Finish image deletion
 * Handle capitalization in file extensions better
 
 ### Known Problems:

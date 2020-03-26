@@ -85,7 +85,8 @@ const int settingDataSize = sizeof(WINDOW_X)
 							+ sizeof(WINDOW_Y)
 							+ sizeof(WINDOW_WIDTH)
 							+ sizeof(WINDOW_HEIGHT)
-							+ sizeof(WINDOW_MAXIMIZED);
+							+ sizeof(WINDOW_MAXIMIZED)
+							+ sizeof(DISPLAY_MODE_DARK);
 
 std::vector<std::filesystem::path> FILES_ADJACENT_IMAGES;
 uint32_t IMAGE_FILE_INDEX = 0;
@@ -132,6 +133,7 @@ void readSettings() {
 			inputStream.read(reinterpret_cast<char *>(&WINDOW_WIDTH), sizeof(WINDOW_WIDTH));
 			inputStream.read(reinterpret_cast<char *>(&WINDOW_HEIGHT), sizeof(WINDOW_HEIGHT));
 			inputStream.read(reinterpret_cast<char *>(&WINDOW_MAXIMIZED), sizeof(WINDOW_MAXIMIZED));
+			inputStream.read(reinterpret_cast<char *>(&DISPLAY_MODE_DARK), sizeof(DISPLAY_MODE_DARK));
 		}
 		else {
 			std::cerr << LOG_WARNING << "Incorrect settings data size!" << std::endl;
@@ -173,6 +175,9 @@ void writeSettings() {
 		}
 		//write window state
 		outputStream.write(reinterpret_cast<char *>(&WINDOW_MAXIMIZED), sizeof(WINDOW_MAXIMIZED));
+		//write current theme state
+		outputStream.write(reinterpret_cast<char *>(&DISPLAY_MODE_DARK), sizeof(DISPLAY_MODE_DARK));
+
 
 		outputStream.close();
 	}
