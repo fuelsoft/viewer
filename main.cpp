@@ -515,17 +515,23 @@ int main(int argc, char* argv[]) {
 							draw(&win, (DISPLAY_MODE_DARK) ? TEXTURE_TRANSPARENCY_DARK : TEXTURE_TRANSPARENCY_LIGHT, imageTexture);
 							break;
 						case SDLK_DELETE:
-							{
-							bool confirmDelete = IDYES == MessageBox(nullptr, "Are you sure you want to delete this image?", "Delete Image", MB_YESNO | MB_ICONEXCLAMATION);
-							if (confirmDelete) {
-								/* DELETE CALL HERE */
+							if (IDYES == MessageBox(nullptr, "Are you sure you want to permanently delete this image?\nThis action cannot be reversed!", "Delete Image", MB_YESNO | MB_DEFBUTTON2 | MB_ICONEXCLAMATION)) {
+								try { //success
+									std::filesystem::remove(FILES_ADJACENT_IMAGES[IMAGE_FILE_INDEX]);
+									std::cout << LOG_NOTICE << "File deleted: " << FILES_ADJACENT_IMAGES[IMAGE_FILE_INDEX].string() << std::endl;
+								}
+								catch (const std::filesystem::filesystem_error& e) { //failure
+									std::cerr << LOG_WARNING << "File could not be deleted: " << FILES_ADJACENT_IMAGES[IMAGE_FILE_INDEX].string() << std::endl;
+									std::cerr << LOG_WARNING << e.what() << std::endl;
+									MessageBox(nullptr, "Image could not be deleted.", "Image Deletion Failure", MB_OK | MB_ICONERROR);
+									break;
+								}
 								FILES_ADJACENT_IMAGES.erase(FILES_ADJACENT_IMAGES.begin() + IMAGE_FILE_INDEX);
 								IMAGE_FILE_INDEX--;
 								SDL_Event sdlENext;
 								sdlENext.type = SDL_KEYDOWN;
 								sdlENext.key.keysym.sym = SDLK_RIGHT;
 								SDL_PushEvent(&sdlENext);
-							}
 							}
 							break;
 						//previous image
