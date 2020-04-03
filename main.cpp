@@ -420,8 +420,19 @@ int main(int argc, char* argv[]) {
 		return 1;
 	}
 
-	//determine image filename
-	PATH_FILE_IMAGE = std::filesystem::canonical(std::filesystem::path(argv[1]));
+	try {
+		//determine image filename
+		PATH_FILE_IMAGE = std::filesystem::canonical(std::filesystem::path(argv[1]));
+	} catch (const std::filesystem::filesystem_error& e) {
+		//this happens when there are UTF-8 characters in the path. std::fs bug?
+		std::cerr << LOG_ERROR << e.what() << std::endl;
+		SDL_ShowSimpleMessageBox(SDL_MESSAGEBOX_ERROR,
+								"Could not resolve canonical file path!",
+								"This can be the result of the path containing UTF-8 characters.\n"
+								"Check for invalid or suspect characters in folders or filename.",
+								win.window);
+		return 1;
+	}
 	//update window title with image filename
 	win.setTitle((PATH_FILE_IMAGE.filename().string() + " - " + APPLICATION_TITLE).c_str());
 
