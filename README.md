@@ -49,6 +49,7 @@ First, ensure that the executable has all the `.dll` files next to it. There are
 
 Then call the program by either dragging an image onto Viewer.exe or by running `Viewer.exe <filename>` in a terminal.
 
+You can also set Viewer as the default program for some image formats if you want to commit to it like I have.
 ### Controls:
 * Zoom is handled by hitting `Keypad +/-` or scrolling. 
 * Panning is handled by left-clicking and dragging the image. 
@@ -56,7 +57,7 @@ Then call the program by either dragging an image onto Viewer.exe or by running 
 * Quit by closing the window or hitting `Escape`.
 * Navigate to previous/next image in folder with the `Left` and `Right` arrow keys or `Back/Forward` buttons on your mouse (if equipped).
 * Toggle between light and dark background with `Tab`.
-* Delete current image with `Delete` - you will be asked to confirm the action first.
+* Delete current image with `Delete` - you will be asked to confirm the action first. **THIS IS PERMANENT!**
 
 ### Supported formats:
 As listed [here](https://www.libsdl.org/projects/SDL_image/docs/SDL_image.pdf#page=8&zoom=auto,-205,547).
@@ -72,7 +73,6 @@ As listed [here](https://www.libsdl.org/projects/SDL_image/docs/SDL_image.pdf#pa
 * Animated GIFs
 * Zoom on mouse instead of window center
 * Stop image from being moved off-screen
-* Finish image deletion
 * Handle capitalization in file extensions better
 
 ### Known Problems:
@@ -81,5 +81,6 @@ As listed [here](https://www.libsdl.org/projects/SDL_image/docs/SDL_image.pdf#pa
 * GIF: Animated sequences only load the first frame
 * ALL: Images loaded from RO-type media (cell phones, cameras) are copied to a temp folder by Windows before being loaded. 
 This breaks in-folder navigation. It's unclear to me how WPV works around this.
+* ALL: Images with UTF-8 charaters anywhere in the path break canonical path creation - not sure what I can do about that.
 
 [1]: https://www.libsdl.org/projects/SDL_image/docs/SDL_image.pdf#page=21&zoom=auto,-205,720
