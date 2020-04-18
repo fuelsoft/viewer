@@ -39,7 +39,7 @@ namespace IVCONST {
 	const std::string BUILD_TIME = __TIME__;
 	std::string VERSION_ABOUT;
 
-	std::string IVVERSION = "0.2.2";
+	std::string IVVERSION = "0.2.3";
 
 	/* LOGGING */
 	const std::string APPLICATION_TITLE = "Image Viewer";
@@ -110,6 +110,8 @@ namespace IVGLOBAL {
 	std::vector<std::filesystem::path> FILES_ADJACENT_IMAGES;
 	uint32_t IMAGE_FILE_INDEX = 0;
 
+	// This the data read from and written to settings file.
+	// Adding a new value here will cause old config files to be discarded on first read.
 	struct IVSETTINGS {
 		int WINDOW_X;
 		int WINDOW_Y;
@@ -119,6 +121,8 @@ namespace IVGLOBAL {
 		bool DISPLAY_MODE_DARK;
 	} SETTINGS;
 
+	// These are the default values for the settings.
+	// If adding a new setting, be sure to add a sensible default here too.
 	struct IVSETTINGS DEFAULTS = {
 		SDL_WINDOWPOS_UNDEFINED,
 		SDL_WINDOWPOS_UNDEFINED,
@@ -421,10 +425,7 @@ int main(int argc, char* argv[]) {
 	//no file passed in
 	if (argc < 2) {
 		std::cerr << IVCONST::LOG_ERROR << "No arguments provided!" << std::endl;
-		SDL_ShowSimpleMessageBox(SDL_MESSAGEBOX_ERROR,
-								"No filename provided!",
-								"Please provide a path to an image file!",
-								win.window);
+		MessageBox(nullptr, "Please provide a path to an image file!", "No filename provided!", MB_OK | MB_ICONERROR);
 		return 1;
 	}
 
@@ -479,11 +480,9 @@ int main(int argc, char* argv[]) {
 	} catch (const std::filesystem::filesystem_error& e) {
 		//this happens when there are UTF-8 characters in the path. std::fs bug?
 		std::cerr << IVCONST::LOG_ERROR << e.what() << std::endl;
-		SDL_ShowSimpleMessageBox(SDL_MESSAGEBOX_ERROR,
-								"Could not resolve canonical file path!",
-								"This can be the result of the path containing UTF-8 characters.\n"
-								"Check for invalid or suspect characters in folders or filename.",
-								win.window);
+		MessageBox(nullptr, "This can be the result of the path containing UTF-8 characters.\n"
+							"Check for invalid or suspect characters in folders or filename.", 
+							"Could not resolve canonical file path!", MB_OK | MB_ICONERROR);
 		return 1;
 	}
 	//update window title with image filename
@@ -567,7 +566,7 @@ int main(int argc, char* argv[]) {
 							quit = true;
 							break;
 						case SDLK_F1: //help
-							MessageBox(nullptr, IVCONST::VERSION_ABOUT.c_str(), ("About " + IVCONST::APPLICATION_TITLE).c_str(), MB_OK);
+							MessageBox(nullptr, IVCONST::VERSION_ABOUT.c_str(), ("About " + IVCONST::APPLICATION_TITLE).c_str(), MB_OK | MB_ICONINFORMATION);
 							break;
 						case SDLK_TAB: //toggle light mode
 							IVGLOBAL::SETTINGS.DISPLAY_MODE_DARK = !IVGLOBAL::SETTINGS.DISPLAY_MODE_DARK;
