@@ -55,13 +55,16 @@ You can also set Viewer as the default program for some image formats if you wan
 ### Controls:
 |CONTROL|FUNCTION|NOTES|
 |:-----:|:---:|:---:|
-|+|Increase zoom|For keyboards without keypad, use equals (`=`)|
+|+|Increase zoom|For keyboards without keypad, use equals (`=`).|
 |-|Decrease zoom||
 |L-CLICK|Pan image|Must be held while dragging.|
 |0|Reset zoom and pan|Zero, not the letter O.|
+|M-CLICK|Reset zoom and pan|This is usually a scroll wheel click.|
 |ESCAPE|Close program|Identical to window *close* button.|
 |L-ARROW|Previous image||
+|MOUSE *X1*|Previous image|If the mouse is equipped with a *back* button.|
 |R-ARROW|Next image||
+|MOUSE *X2*|Next image|If the mouse is equipped with a *forward* button.|
 |TAB|Toggle light theme||
 |DELETE|Delete image|**Permanent!** This will **not** go to Recycle Bin!|
 |F1|View version info|Probably not useful to you if you're reading this.|
@@ -88,6 +91,6 @@ As listed [here](https://www.libsdl.org/projects/SDL_image/docs/SDL_image.pdf#pa
 * GIF: Animated sequences only load the first frame
 * ALL: Images loaded from RO-type media (cell phones, cameras) are copied to a temp folder by Windows before being loaded. 
 This breaks in-folder navigation. It's unclear to me how WPV works around this.
-* ALL: Images with UTF-8 charaters anywhere in the path break canonical path creation - not sure what I can do about that.
+* ALL: Images with UTF-8 characters anywhere in the path break canonical path creation - not sure what I can do about that.
 
 [1]: https://www.libsdl.org/projects/SDL_image/docs/SDL_image.pdf#page=21&zoom=auto,-205,720
