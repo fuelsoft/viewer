@@ -30,6 +30,17 @@ NICK WILSON
 
 namespace IVCONST {
 
+	/* ABOUT */
+	SDL_version SDL_COMPILED_VERSION;
+	SDL_version SDL_IMAGE_COMPILED_VERSION;
+	SDL_version GCC_COMPILER_VERSION = {__GNUC__, __GNUC_MINOR__, __GNUC_PATCHLEVEL__};
+	const long CPP_STANDARD = __cplusplus;
+	const std::string BUILD_DATE = __DATE__;
+	const std::string BUILD_TIME = __TIME__;
+	std::string VERSION_ABOUT;
+
+	std::string IVVERSION = "0.2.2";
+
 	/* LOGGING */
 	const std::string APPLICATION_TITLE = "Image Viewer";
 	const std::string LOG_ERROR = "<ERROR> ";
@@ -52,12 +63,6 @@ namespace IVCONST {
 	const uint32_t CHECKERBOARD_LIGHT_DARK = 0x00DEDEDE;
 
 	const std::string FILENAME_SETTINGS = "settings.cfg";
-	const int SETTINGDATASIZE = sizeof(int)
-								+ sizeof(int)
-								+ sizeof(int)
-								+ sizeof(int)
-								+ sizeof(bool)
-								+ sizeof(bool);
 
 	/* From sdl_image documentation */
 	/* Less common formats omitted */
@@ -328,27 +333,35 @@ int formatSupport(std::string extension) {
 	return -1;
 }
 
+/* Format and return version string */
+std::string versionToString(SDL_version* version) {
+	return std::to_string(version->major) + '.' + std::to_string(version->minor) + '.' + std::to_string(version->patch);
+}
+
 /**
 * main	- Setup, load image, then manage user input
 */
 int main(int argc, char* argv[]) {
 	bool quit = false;
 
-	/* process any flags */
+	/* Populate version info */
+	SDL_VERSION(&IVCONST::SDL_COMPILED_VERSION);
+	SDL_IMAGE_VERSION(&IVCONST::SDL_IMAGE_COMPILED_VERSION);
+
+	IVCONST::VERSION_ABOUT = IVCONST::APPLICATION_TITLE + " " + IVCONST::IVVERSION
+							+ "\nBUILT " + IVCONST::BUILD_DATE + " " + IVCONST::BUILD_TIME 
+							+ "\nGCC " + versionToString(&IVCONST::GCC_COMPILER_VERSION)
+							+ "\nSTD " + std::to_string(IVCONST::CPP_STANDARD)
+							+ "\nSDL VERSION " + versionToString(&IVCONST::SDL_COMPILED_VERSION)
+							+ "\nSDL IMAGE VERSION " + versionToString(&IVCONST::SDL_IMAGE_COMPILED_VERSION);
+
+	/* Process any flags */
 	for (int i = 0; i < argc; i++) {
 		if (argv[i][0] == '-') {
 			switch (argv[i][1]) {
 				case 'v': //-v will print version info
-					std::cout << "=== " << IVCONST::APPLICATION_TITLE << " ===" << std::endl;
-					std::cout << "Built " << __DATE__ << " " << __TIME__ << std::endl;
-					std::cout << "GCC " << __VERSION__ << std::endl;
-					std::cout << "STD " << __cplusplus << std::endl;
-
-					SDL_version compile_version;
-					SDL_GetVersion(&compile_version);
-					std::cout << "SDL " << (int) compile_version.major << "." << (int) compile_version.minor << "." << (int) compile_version.patch << std::endl;
-					SDL_IMAGE_VERSION(&compile_version);
-					std::cout << "SDL Image " << (int) compile_version.major << "." << (int) compile_version.minor << "." << (int) compile_version.patch << std::endl;
+					std::cout << "=== ABOUT: " << IVCONST::APPLICATION_TITLE << " ===" << std::endl;
+					std::cout << IVCONST::VERSION_ABOUT << std::endl;
 					return 0;
 				default: ///no other flags defined yet
 					std::cout << "Invalid flag: " << argv[i] << std::endl;
@@ -357,14 +370,14 @@ int main(int argc, char* argv[]) {
 		}
 	}
 
-	SDL_Event sdlEvent;
-	SDL_Texture* imageTexture = nullptr;
-
 	/* Confirm video is available and set up */
 	if (SDL_Init(SDL_INIT_VIDEO) < 0) {
 		std::cerr << IVCONST::LOG_ERROR << "SDL COULD NOT BE INITIALIZED!" << std::endl;
 		return 1;
 	}
+
+	SDL_Event sdlEvent;
+	SDL_Texture* imageTexture = nullptr;
 
 	char EXE_PATH[MAX_PATH];
 	GetModuleFileNameA(NULL, EXE_PATH, MAX_PATH); //Windows system call to get executable's path
@@ -511,21 +524,24 @@ int main(int argc, char* argv[]) {
 							draw(&win, (IVGLOBAL::SETTINGS.DISPLAY_MODE_DARK) ? IVGLOBAL::TEXTURE_TRANSPARENCY_DARK : IVGLOBAL::TEXTURE_TRANSPARENCY_LIGHT, imageTexture);
 							break;
 						case SDLK_KP_MINUS: //keypad -, zoom out
-							IVGLOBAL::VIEWPORT_ZOOM = std::max(IVCONST::ZOOM_MIN, IVGLOBAL::VIEWPORT_ZOOM/2.0f);
+							IVGLOBAL::VIEWPORT_ZOOM = std::max(IVCONST::ZOOM_MIN, IVGLOBAL::VIEWPORT_ZOOM / 2.0f);
 							draw(&win, (IVGLOBAL::SETTINGS.DISPLAY_MODE_DARK) ? IVGLOBAL::TEXTURE_TRANSPARENCY_DARK : IVGLOBAL::TEXTURE_TRANSPARENCY_LIGHT, imageTexture);
 							break;
 						case SDLK_KP_0: //keypad 0, reset zoom and positioning
 							resetViewport();
 							draw(&win, (IVGLOBAL::SETTINGS.DISPLAY_MODE_DARK) ? IVGLOBAL::TEXTURE_TRANSPARENCY_DARK : IVGLOBAL::TEXTURE_TRANSPARENCY_LIGHT, imageTexture);
 							break;
-						case SDLK_ESCAPE:
+						case SDLK_ESCAPE: //quit
 							quit = true;
 							break;
-						case SDLK_TAB:
+						case SDLK_F1: //help
+							MessageBox(nullptr, IVCONST::VERSION_ABOUT.c_str(), ("About " + IVCONST::APPLICATION_TITLE).c_str(), MB_OK);
+							break;
+						case SDLK_TAB: //toggle light mode
 							IVGLOBAL::SETTINGS.DISPLAY_MODE_DARK = !IVGLOBAL::SETTINGS.DISPLAY_MODE_DARK;
 							draw(&win, (IVGLOBAL::SETTINGS.DISPLAY_MODE_DARK) ? IVGLOBAL::TEXTURE_TRANSPARENCY_DARK : IVGLOBAL::TEXTURE_TRANSPARENCY_LIGHT, imageTexture);
 							break;
-						case SDLK_DELETE:
+						case SDLK_DELETE: //delete image
 							if (IDYES == MessageBox(nullptr, "Are you sure you want to permanently delete this image?\nThis action cannot be reversed!", "Delete Image", MB_YESNO | MB_DEFBUTTON2 | MB_ICONEXCLAMATION)) {
 								try { //success
 									std::filesystem::remove(IVGLOBAL::FILES_ADJACENT_IMAGES[IVGLOBAL::IMAGE_FILE_INDEX]);
@@ -652,5 +668,3 @@ int main(int argc, char* argv[]) {
 
 	return 0;
 }
-
-/* TODO: IfDef Debug: -v goes to console, otherwise show messagebox with version info */
