@@ -520,15 +520,18 @@ int main(int argc, char* argv[]) {
 					break;
 				case SDL_KEYDOWN:
 					switch (sdlEvent.key.keysym.sym) {
-						case SDLK_KP_PLUS: //keypad +, zoom in
+						case SDLK_EQUALS:  //equals with plus secondary
+						case SDLK_KP_PLUS: //or keypad plus, zoom in
 							IVGLOBAL::VIEWPORT_ZOOM = std::min(IVCONST::ZOOM_MAX, IVGLOBAL::VIEWPORT_ZOOM * 2.0f);
 							draw(&win, (IVGLOBAL::SETTINGS.DISPLAY_MODE_DARK) ? IVGLOBAL::TEXTURE_TRANSPARENCY_DARK : IVGLOBAL::TEXTURE_TRANSPARENCY_LIGHT, imageTexture);
 							break;
-						case SDLK_KP_MINUS: //keypad -, zoom out
+						case SDLK_MINUS:    //standard minus
+						case SDLK_KP_MINUS: //or keypad minus, zoom out
 							IVGLOBAL::VIEWPORT_ZOOM = std::max(IVCONST::ZOOM_MIN, IVGLOBAL::VIEWPORT_ZOOM / 2.0f);
 							draw(&win, (IVGLOBAL::SETTINGS.DISPLAY_MODE_DARK) ? IVGLOBAL::TEXTURE_TRANSPARENCY_DARK : IVGLOBAL::TEXTURE_TRANSPARENCY_LIGHT, imageTexture);
 							break;
-						case SDLK_KP_0: //keypad 0, reset zoom and positioning
+						case SDLK_0:    //standard 0
+						case SDLK_KP_0: //or keypad 0, reset zoom and positioning
 							resetViewport();
 							draw(&win, (IVGLOBAL::SETTINGS.DISPLAY_MODE_DARK) ? IVGLOBAL::TEXTURE_TRANSPARENCY_DARK : IVGLOBAL::TEXTURE_TRANSPARENCY_LIGHT, imageTexture);
 							break;

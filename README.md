@@ -55,7 +55,7 @@ You can also set Viewer as the default program for some image formats if you wan
 ### Controls:
 |CONTROL|FUNCTION|NOTES|
 |:-----:|:---:|:---:|
-|+|Increase zoom||
+|+|Increase zoom|For keyboards without keypad, use equals (`=`)|
 |-|Decrease zoom||
 |L-CLICK|Pan image|Must be held while dragging.|
 |0|Reset zoom and pan|Zero, not the letter O.|
