@@ -93,7 +93,6 @@ As listed [here](https://www.libsdl.org/projects/SDL_image/docs/SDL_image.pdf#pa
 * Animated GIFs
 * Zoom on mouse instead of window center
 * Stop image from being moved off-screen
-* Handle capitalization in file extensions better
 
 ### Known Problems:
 * ICO: Files stored as "NEW PNG" type do not load with SDL_image

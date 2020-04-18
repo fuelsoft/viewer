@@ -66,24 +66,13 @@ namespace IVCONST {
 
 	/* From sdl_image documentation */
 	/* Less common formats omitted */
-	/* TODO: Remove uppercase duplicates */
-	const std::string SUPPORTED_FILETYPES[] = {
-		".jpg",
-		".jpeg",
-		".JPG",
-		".JPEG",
-		".png",
-		".PNG",
-		".gif",
-		".GIF",
-		".bmp",
-		".BMP",
-		".tif",
-		".tiff",
-		".tga",
-		".TIF",
-		".TIFF",
-		".TGA",
+	enum FILE_EXT {
+		JPG,
+		PNG,
+		GIF,
+		BMP,
+		TIF,
+		TGA
 	};
 }
 
@@ -325,12 +314,51 @@ void draw(Window* win, SDL_Texture* tile_texture, SDL_Texture* image_texture) {
 /**
 * formatSupport	- Compare file extension provided to known list to confirm support
 * extension 	> File extension as String
-* return - int 	< Index of extension in list or -1 if not found
+* return - int 	< IVCONST::FILE_EXT of file type or -1 if no match
 */
 int formatSupport(std::string extension) {
-	for (uint8_t i = 0; i < std::size(IVCONST::SUPPORTED_FILETYPES); i++) {
-		if (!extension.compare(IVCONST::SUPPORTED_FILETYPES[i])) return (int) i;
+	// convert character to upper case for comparison
+	auto upper = [](char a) -> char {
+		if (a > 0x60 && a < 0x7B) return (char) (a - 0x20);
+		else return a;
+	};
+
+	// convert extension string, ignoring leading dot
+	std::string extensionUppercase = "";
+	for (unsigned i = 1; i < extension.length(); i++) {
+		extensionUppercase += upper(extension[i]);
 	}
+	
+	// sort by first character of extension
+	switch (extensionUppercase[0]) {
+		case 'J':
+			/* JP(E)G */
+			if (!extensionUppercase.compare("JPG"))  return IVCONST::JPG;
+			if (!extensionUppercase.compare("JPEG")) return IVCONST::JPG;
+			break;
+		case 'P':
+			/* PNG */
+			if (!extensionUppercase.compare("PNG"))  return IVCONST::PNG;
+			break;
+		case 'G':
+			/* GIF */
+			if (!extensionUppercase.compare("GIF"))  return IVCONST::GIF;
+			break;
+		case 'B':
+			/* BMP */
+			if (!extensionUppercase.compare("BMP"))  return IVCONST::BMP;
+			break;
+		case 'T':
+			/* TIF(F) */
+			if (!extensionUppercase.compare("TIF"))  return IVCONST::TIF;
+			if (!extensionUppercase.compare("TIFF")) return IVCONST::TIF;
+			/* TGA */
+			if (!extensionUppercase.compare("TGA"))  return IVCONST::TGA;
+			break;
+		default:
+			return -1;
+	}
+
 	return -1;
 }
 
