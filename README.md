@@ -53,21 +53,31 @@ Then call the program by either dragging an image onto Viewer.exe or by running 
 
 You can also set Viewer as the default program for some image formats if you want to commit to it.
 ### Controls:
+
+##### Mouse:
+
 |CONTROL|FUNCTION|NOTES|
 |:-----:|:---:|:---:|
-|+|Increase zoom|For keyboards without keypad, use equals (`=`).|
-|-|Decrease zoom||
-|L-CLICK|Pan image|Must be held while dragging.|
-|0|Reset zoom and pan|Zero, not the letter O.|
-|M-CLICK|Reset zoom and pan|This is usually a scroll wheel click.|
-|ESCAPE|Close program|Identical to window *close* button.|
-|L-ARROW|Previous image||
+|SCROLL UP|Increase zoom|-|
+|SCROLL DOWN|Decrease zoom|-|
+|LEFT CLICK|Pan image|Must be held while dragging.|
+|MIDDLE CLICK|Reset zoom and pan|This is usually a scroll wheel click.|
 |MOUSE *X1*|Previous image|If the mouse is equipped with a *back* button.|
-|R-ARROW|Next image||
 |MOUSE *X2*|Next image|If the mouse is equipped with a *forward* button.|
-|TAB|Toggle light theme||
-|DELETE|Delete image|**Permanent!** This will **not** go to Recycle Bin!|
-|F1|View version info|Probably not useful to you if you're reading this.|
+
+##### Keyboard:
+
+|SYMBOL|CONTROL|FUNCTION|NOTES|
+|:---:|:---:|:---:|:---:|
+|+|PLUS|Increase zoom|For keyboards without keypad, use equals (`=`).|
+|-|MINUS|Decrease zoom|-|
+|0|ZERO|Reset zoom and pan|Zero, not the letter O.|
+|ESC|ESCAPE|Close program|Identical to window *close* button.|
+|<\-|LEFT ARROW|Previous image|-|
+|\->|RIGHT ARROW|Next image|-|
+|\|<\->\||TAB|Toggle light theme|-|
+|DEL|DELETE|Delete image|**Permanent!** This will **not** go to Recycle Bin!|
+|F1|F1|View version info|Probably not useful to you if you're reading this.|
 
 ### Supported formats:
 As listed [here](https://www.libsdl.org/projects/SDL_image/docs/SDL_image.pdf#page=8&zoom=auto,-205,547). 
