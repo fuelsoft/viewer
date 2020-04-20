@@ -11,6 +11,16 @@ NICK WILSON
 Window::Window(int w, int h, int x, int y, uint32_t flags) {
 	window = SDL_CreateWindow("Untitled Window", x, y, w, h, flags);
 
+	this->w = w;
+	this->h = h;
+	this->x = x;
+	this->y = y;
+
+	this->pw = w;
+	this->ph = h;
+	this->px = x;
+	this->py = y;
+
 	if (window != NULL) {
 		surface = SDL_GetWindowSurface(window);
 	}
@@ -36,57 +46,14 @@ void Window::setTitle(std::string title) {
 	SDL_SetWindowTitle(window, title.c_str());
 }
 
-/*
-Return the currently set window title
-*/
-std::string Window::getTitle() {
-	return SDL_GetWindowTitle(window);
+void Window::updateWindowPos() {
+	px = x;
+	py = y;
+	SDL_GetWindowPosition(window, &x, &y);
 }
 
-/*
-Get the window's surface's pixels.
-Read and write.
-*/
-void* Window::getPixels() {
-	return surface->pixels;
-}
-
-/*
-Useful for dumping surface to either debug or save the contents.
-*/
-SDL_Surface* Window::getSurface() {
-	return surface;
-}
-
-/*
-Overwrite the window contents with the provided colour.
-*/
-void Window::clear(int r, int g, int b) {
-	if (renderer != nullptr) { //accelerated mode
-		SDL_SetRenderDrawColor(renderer, r, g, b, SDL_ALPHA_OPAQUE);
-		SDL_RenderClear(renderer);
-	}
-	else { //default mode
-		SDL_FillRect(surface, NULL, SDL_MapRGB(surface->format, r, g, b));
-	}
-}
-
-void Window::hide() {
-	SDL_HideWindow(window);
-}
-
-void Window::show() {
-	SDL_ShowWindow(window);
-}
-
-void Window::minimize() {
-    SDL_MinimizeWindow(window);
-}
-
-void Window::maximize() {
-    SDL_MaximizeWindow(window);
-}
-
-void Window::resize(int x, int y) {
-    SDL_SetWindowSize(window, x, y);
+void Window::updateWindowSize() {
+	pw = w;
+	ph = h;
+	SDL_GetWindowSize(window, &w, &h);
 }

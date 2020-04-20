@@ -17,6 +17,9 @@ class Window {
 private:
 
 public:
+	int x, y, w, h;
+	int px, py, pw, ph;
+
 	SDL_Window* window = nullptr;
 	SDL_Surface* surface = nullptr;
 	SDL_Renderer* renderer = nullptr;
@@ -29,24 +32,9 @@ public:
 
 	void setTitle(std::string title);
 
-	std::string getTitle();
+	void updateWindowPos();
 
-	void* getPixels();
-
-	SDL_Surface* getSurface();
-
-	void clear(int r, int g, int b);
-
-	void hide();
-
-	void show();
-
-	void minimize();
-
-	void maximize();
-
-	void resize(int x, int y);
+	void updateWindowSize();
 };
-
 
 #endif
