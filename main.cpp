@@ -10,6 +10,7 @@ NICK WILSON
 #include <SDL2/SDL_image.h>
 
 #include "Window.hpp"
+#include "TiledTexture.hpp"
 
 #include <string>
 #include <iostream>
@@ -56,11 +57,11 @@ namespace IVC {
 	const float ZOOM_MAX = 256;         // 8x zoom
 	const float ZOOM_SCROLL_SENSITIVITY = 1.2;
 
-	const int TEXTURE_CHECKERBOARD_RESOLUTION = 32;
-	const uint32_t CHECKERBOARD_DARK_LIGHT = 0x00141414;
-	const uint32_t CHECKERBOARD_DARK_DARK = 0x000D0D0D;
-	const uint32_t CHECKERBOARD_LIGHT_LIGHT = 0x00F3F3F3;
-	const uint32_t CHECKERBOARD_LIGHT_DARK = 0x00DEDEDE;
+	const int RES_CHECKERBOARD = 32;
+	const uint32_t COLOUR_D_L = 0x00141414;
+	const uint32_t COLOUR_D_D = 0x000D0D0D;
+	const uint32_t COLOUR_L_L = 0x00F3F3F3;
+	const uint32_t COLOUR_L_D = 0x00DEDEDE;
 
 	const std::string FILENAME_SETTINGS = "settings.cfg";
 
@@ -91,8 +92,8 @@ namespace IVG {
 	int VIEWPORT_Y = 0;
 	float VIEWPORT_ZOOM = 1.0f;
 
-	SDL_Texture* TEXTURE_TRANSPARENCY_DARK;
-	SDL_Texture* TEXTURE_TRANSPARENCY_LIGHT;
+	TiledTexture* TEXTURE_DARK;
+	TiledTexture* TEXTURE_LIGHT;
 
 	/* INPUT */
 	bool MOUSE_CLICK_STATE_LEFT = false;
@@ -256,9 +257,9 @@ void redrawImage(Window* win, SDL_Texture* imageTexture) {
 * tileTexture 		> Texture as SDL_Texture to tile
 */
 void drawTileTexture(Window* win, SDL_Texture* tileTexture) {
-	for (int h = 0; h < win->h; h += IVC::TEXTURE_CHECKERBOARD_RESOLUTION){
-		for (int w = 0; w < win->w; w += IVC::TEXTURE_CHECKERBOARD_RESOLUTION){
-			SDL_Rect destination = {w, h, IVC::TEXTURE_CHECKERBOARD_RESOLUTION, IVC::TEXTURE_CHECKERBOARD_RESOLUTION};
+	for (int h = 0; h < win->h; h += IVC::RES_CHECKERBOARD){
+		for (int w = 0; w < win->w; w += IVC::RES_CHECKERBOARD){
+			SDL_Rect destination = {w, h, IVC::RES_CHECKERBOARD, IVC::RES_CHECKERBOARD};
 			SDL_RenderCopy(win->renderer, tileTexture, 0, &destination);
 		}
 	}
@@ -439,34 +440,11 @@ int main(int argc, char* argv[]) {
 	}
 
 	//create checkerboard background textures for transparent images
-	SDL_Surface* transparency_tmp_d = SDL_CreateRGBSurface(0, IVC::TEXTURE_CHECKERBOARD_RESOLUTION, IVC::TEXTURE_CHECKERBOARD_RESOLUTION, 32, 0, 0, 0, 0);
-	SDL_Surface* transparency_tmp_l = SDL_CreateRGBSurface(0, IVC::TEXTURE_CHECKERBOARD_RESOLUTION, IVC::TEXTURE_CHECKERBOARD_RESOLUTION, 32, 0, 0, 0, 0);
-
-	uint32_t* pixeldata_d = (uint32_t*) transparency_tmp_d->pixels;
-	uint32_t* pixeldata_l = (uint32_t*) transparency_tmp_l->pixels;
-
-	for (int h = 0; h < IVC::TEXTURE_CHECKERBOARD_RESOLUTION; h++) {
-		for (int w = 0; w < IVC::TEXTURE_CHECKERBOARD_RESOLUTION; w++) {
-			int p = IVC::TEXTURE_CHECKERBOARD_RESOLUTION / 2;
-			int offset = h * IVC::TEXTURE_CHECKERBOARD_RESOLUTION + w;
-			if ((h < p) ^ (w < p)) {
-				*(pixeldata_d + offset) = IVC::CHECKERBOARD_DARK_LIGHT;
-				*(pixeldata_l + offset) = IVC::CHECKERBOARD_LIGHT_LIGHT;
-			}
-			else {
-				*(pixeldata_d + offset) = IVC::CHECKERBOARD_DARK_DARK;
-				*(pixeldata_l + offset) = IVC::CHECKERBOARD_LIGHT_DARK;
-			}
-		}
-	}
-
-	IVG::TEXTURE_TRANSPARENCY_DARK = SDL_CreateTextureFromSurface(win.renderer, transparency_tmp_d);
-	IVG::TEXTURE_TRANSPARENCY_LIGHT = SDL_CreateTextureFromSurface(win.renderer, transparency_tmp_l);
-	SDL_FreeSurface(transparency_tmp_d);
-	SDL_FreeSurface(transparency_tmp_l);
+	IVG::TEXTURE_DARK = new TiledTexture(win.renderer, IVC::RES_CHECKERBOARD, IVC::RES_CHECKERBOARD, IVC::COLOUR_D_L, IVC::COLOUR_D_D);
+	IVG::TEXTURE_LIGHT = new TiledTexture(win.renderer, IVC::RES_CHECKERBOARD, IVC::RES_CHECKERBOARD, IVC::COLOUR_L_L, IVC::COLOUR_L_D);
 
 	//draw background texture before continuing to show program is loading
-	draw(&win, (IVG::SETTINGS.DISPLAY_MODE_DARK) ? IVG::TEXTURE_TRANSPARENCY_DARK : IVG::TEXTURE_TRANSPARENCY_LIGHT, imageTexture);
+	draw(&win, (IVG::SETTINGS.DISPLAY_MODE_DARK) ? IVG::TEXTURE_DARK->texture : IVG::TEXTURE_LIGHT->texture, imageTexture);
 
 	//load up the image passed in
 	if (loadTextureFromFile(std::string(argv[1]), &win, &imageTexture)) {
@@ -489,7 +467,7 @@ int main(int argc, char* argv[]) {
 	win.setTitle((IVG::PATH_FILE_IMAGE.filename().string() + " - " + IVC::APPLICATION_TITLE).c_str());
 
 	//finally draw image and background
-	draw(&win, (IVG::SETTINGS.DISPLAY_MODE_DARK) ? IVG::TEXTURE_TRANSPARENCY_DARK : IVG::TEXTURE_TRANSPARENCY_LIGHT, imageTexture);
+	draw(&win, (IVG::SETTINGS.DISPLAY_MODE_DARK) ? IVG::TEXTURE_DARK->texture : IVG::TEXTURE_LIGHT->texture, imageTexture);
 
 	//iterate image folder and mark position of currently open image
 	int pos = 0;
@@ -537,7 +515,7 @@ int main(int argc, char* argv[]) {
 						case SDL_WINDOWEVENT_SIZE_CHANGED:
 							IVG::SETTINGS.MAXIMIZED = false;
 							win.updateWindowSize();
-							draw(&win, (IVG::SETTINGS.DISPLAY_MODE_DARK) ? IVG::TEXTURE_TRANSPARENCY_DARK : IVG::TEXTURE_TRANSPARENCY_LIGHT, imageTexture);
+							draw(&win, (IVG::SETTINGS.DISPLAY_MODE_DARK) ? IVG::TEXTURE_DARK->texture : IVG::TEXTURE_LIGHT->texture, imageTexture);
 							break;
 					}
 					break;
@@ -546,17 +524,17 @@ int main(int argc, char* argv[]) {
 						case SDLK_EQUALS:  //equals with plus secondary
 						case SDLK_KP_PLUS: //or keypad plus, zoom in
 							IVG::VIEWPORT_ZOOM = std::min(IVC::ZOOM_MAX, IVG::VIEWPORT_ZOOM * 2.0f);
-							draw(&win, (IVG::SETTINGS.DISPLAY_MODE_DARK) ? IVG::TEXTURE_TRANSPARENCY_DARK : IVG::TEXTURE_TRANSPARENCY_LIGHT, imageTexture);
+							draw(&win, (IVG::SETTINGS.DISPLAY_MODE_DARK) ? IVG::TEXTURE_DARK->texture : IVG::TEXTURE_LIGHT->texture, imageTexture);
 							break;
 						case SDLK_MINUS:    //standard minus
 						case SDLK_KP_MINUS: //or keypad minus, zoom out
 							IVG::VIEWPORT_ZOOM = std::max(IVC::ZOOM_MIN, IVG::VIEWPORT_ZOOM / 2.0f);
-							draw(&win, (IVG::SETTINGS.DISPLAY_MODE_DARK) ? IVG::TEXTURE_TRANSPARENCY_DARK : IVG::TEXTURE_TRANSPARENCY_LIGHT, imageTexture);
+							draw(&win, (IVG::SETTINGS.DISPLAY_MODE_DARK) ? IVG::TEXTURE_DARK->texture : IVG::TEXTURE_LIGHT->texture, imageTexture);
 							break;
 						case SDLK_0:    //standard 0
 						case SDLK_KP_0: //or keypad 0, reset zoom and positioning
 							resetViewport();
-							draw(&win, (IVG::SETTINGS.DISPLAY_MODE_DARK) ? IVG::TEXTURE_TRANSPARENCY_DARK : IVG::TEXTURE_TRANSPARENCY_LIGHT, imageTexture);
+							draw(&win, (IVG::SETTINGS.DISPLAY_MODE_DARK) ? IVG::TEXTURE_DARK->texture : IVG::TEXTURE_LIGHT->texture, imageTexture);
 							break;
 						case SDLK_ESCAPE: //quit
 							quit = true;
@@ -566,7 +544,7 @@ int main(int argc, char* argv[]) {
 							break;
 						case SDLK_TAB: //toggle light mode
 							IVG::SETTINGS.DISPLAY_MODE_DARK = !IVG::SETTINGS.DISPLAY_MODE_DARK;
-							draw(&win, (IVG::SETTINGS.DISPLAY_MODE_DARK) ? IVG::TEXTURE_TRANSPARENCY_DARK : IVG::TEXTURE_TRANSPARENCY_LIGHT, imageTexture);
+							draw(&win, (IVG::SETTINGS.DISPLAY_MODE_DARK) ? IVG::TEXTURE_DARK->texture : IVG::TEXTURE_LIGHT->texture, imageTexture);
 							break;
 						case SDLK_DELETE: //delete image
 							if (IDYES == MessageBox(nullptr, "Are you sure you want to permanently delete this image?\nThis action cannot be reversed!", "Delete Image", MB_YESNO | MB_DEFBUTTON2 | MB_ICONEXCLAMATION)) {
@@ -599,7 +577,7 @@ int main(int argc, char* argv[]) {
 								break;
 							}
 							resetViewport(); //new image so reset zoom and positioning
-							draw(&win, (IVG::SETTINGS.DISPLAY_MODE_DARK) ? IVG::TEXTURE_TRANSPARENCY_DARK : IVG::TEXTURE_TRANSPARENCY_LIGHT, imageTexture);
+							draw(&win, (IVG::SETTINGS.DISPLAY_MODE_DARK) ? IVG::TEXTURE_DARK->texture : IVG::TEXTURE_LIGHT->texture, imageTexture);
 							break;
 						//next image
 						case SDLK_RIGHT: //move forward
@@ -612,7 +590,7 @@ int main(int argc, char* argv[]) {
 								break;
 							}
 							resetViewport(); //new image so reset zoom and positioning
-							draw(&win, (IVG::SETTINGS.DISPLAY_MODE_DARK) ? IVG::TEXTURE_TRANSPARENCY_DARK : IVG::TEXTURE_TRANSPARENCY_LIGHT, imageTexture);
+							draw(&win, (IVG::SETTINGS.DISPLAY_MODE_DARK) ? IVG::TEXTURE_DARK->texture : IVG::TEXTURE_LIGHT->texture, imageTexture);
 							break;
 					}
 					break;
@@ -626,7 +604,7 @@ int main(int argc, char* argv[]) {
 						IVG::VIEWPORT_X *= IVC::ZOOM_SCROLL_SENSITIVITY;
 						IVG::VIEWPORT_Y *= IVC::ZOOM_SCROLL_SENSITIVITY;
 
-						draw(&win, (IVG::SETTINGS.DISPLAY_MODE_DARK) ? IVG::TEXTURE_TRANSPARENCY_DARK : IVG::TEXTURE_TRANSPARENCY_LIGHT, imageTexture);
+						draw(&win, (IVG::SETTINGS.DISPLAY_MODE_DARK) ? IVG::TEXTURE_DARK->texture : IVG::TEXTURE_LIGHT->texture, imageTexture);
 					}
 					else if (sdlEvent.wheel.y < 0) {
 						IVG::VIEWPORT_ZOOM = std::max(IVC::ZOOM_MIN, IVG::VIEWPORT_ZOOM / IVC::ZOOM_SCROLL_SENSITIVITY);
@@ -635,7 +613,7 @@ int main(int argc, char* argv[]) {
 						IVG::VIEWPORT_X /= IVC::ZOOM_SCROLL_SENSITIVITY;
 						IVG::VIEWPORT_Y /= IVC::ZOOM_SCROLL_SENSITIVITY;
 
-						draw(&win, (IVG::SETTINGS.DISPLAY_MODE_DARK) ? IVG::TEXTURE_TRANSPARENCY_DARK : IVG::TEXTURE_TRANSPARENCY_LIGHT, imageTexture);
+						draw(&win, (IVG::SETTINGS.DISPLAY_MODE_DARK) ? IVG::TEXTURE_DARK->texture : IVG::TEXTURE_LIGHT->texture, imageTexture);
 					}
 					break;
 				case SDL_MOUSEBUTTONDOWN:
@@ -646,7 +624,7 @@ int main(int argc, char* argv[]) {
 							break;
 						case SDL_BUTTON_MIDDLE:
 							resetViewport();
-							draw(&win, (IVG::SETTINGS.DISPLAY_MODE_DARK) ? IVG::TEXTURE_TRANSPARENCY_DARK : IVG::TEXTURE_TRANSPARENCY_LIGHT, imageTexture);
+							draw(&win, (IVG::SETTINGS.DISPLAY_MODE_DARK) ? IVG::TEXTURE_DARK->texture : IVG::TEXTURE_LIGHT->texture, imageTexture);
 							break;
 						case SDL_BUTTON_X1:
 							//bind mouse back button to left arrow to return to previous image
@@ -682,7 +660,7 @@ int main(int argc, char* argv[]) {
 						SDL_GetMouseState(&mouseX, &mouseY);
 						IVG::VIEWPORT_X += mouseX - mousePreviousX;
 						IVG::VIEWPORT_Y += mouseY - mousePreviousY;
-						draw(&win, (IVG::SETTINGS.DISPLAY_MODE_DARK) ? IVG::TEXTURE_TRANSPARENCY_DARK : IVG::TEXTURE_TRANSPARENCY_LIGHT, imageTexture);
+						draw(&win, (IVG::SETTINGS.DISPLAY_MODE_DARK) ? IVG::TEXTURE_DARK->texture : IVG::TEXTURE_LIGHT->texture, imageTexture);
 					}
 					break;
 

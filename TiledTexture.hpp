@@ -17,14 +17,14 @@ class TiledTexture {
 private:
 
 public:
-	int x, y, w, h;
-	int px, py, pw, ph;
+	int w, h;
+	uint32_t HIGH, LOW;
 
 	SDL_Texture* texture = nullptr;
 
 	TiledTexture() {}
 
-	TiledTexture(int w, int h);
+	TiledTexture(SDL_Renderer* renderer, int w, int h, uint32_t HIGH, uint32_t LOW);
 
 	~TiledTexture();
 };
