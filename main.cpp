@@ -11,6 +11,7 @@ NICK WILSON
 
 #include "Window.hpp"
 #include "TiledTexture.hpp"
+#include "IVUtil.hpp"
 
 #include <string>
 #include <iostream>
@@ -39,14 +40,7 @@ namespace IVC {
 	const std::string BUILD_DATE = __DATE__;
 	const std::string BUILD_TIME = __TIME__;
 	std::string VERSION_ABOUT;
-
-	std::string IVVERSION = "0.2.3";
-
-	/* LOGGING */
-	const std::string APPLICATION_TITLE = "Image Viewer";
-	const std::string LOG_ERROR = "<ERROR> ";
-	const std::string LOG_WARNING = "<WARNING> ";
-	const std::string LOG_NOTICE = "<NOTICE> ";
+	const std::string IVVERSION = "0.2.3";
 
 	/* WINDOW MANAGEMENT */
 	const int WIN_DEFAULT_W = 1600;
@@ -63,18 +57,18 @@ namespace IVC {
 	const uint32_t COLOUR_L_L = 0x00F3F3F3;
 	const uint32_t COLOUR_L_D = 0x00DEDEDE;
 
-	const std::string FILENAME_SETTINGS = "settings.cfg";
-
-	/* From sdl_image documentation */
-	/* Less common formats omitted */
-	enum FILE_TYPE {
-		JPG,
-		PNG,
-		GIF,
-		BMP,
-		TIF,
-		TGA
+	// These are the default values for the settings.
+	// If adding a new setting, be sure to add a sensible default here too.
+	const struct IVUTIL::IVSETTINGS DEFAULTS = {
+		SDL_WINDOWPOS_UNDEFINED,
+		SDL_WINDOWPOS_UNDEFINED,
+		IVC::WIN_DEFAULT_W,
+		IVC::WIN_DEFAULT_H,
+		false,
+		true
 	};
+
+	const std::string FILENAME_SETTINGS = "settings.cfg";
 }
 
 /* /// GLOBALS /// */
@@ -92,9 +86,6 @@ namespace IVG {
 	int VIEWPORT_Y = 0;
 	float VIEWPORT_ZOOM = 1.0f;
 
-	TiledTexture* TEXTURE_DARK;
-	TiledTexture* TEXTURE_LIGHT;
-
 	/* INPUT */
 	bool MOUSE_CLICK_STATE_LEFT = false;
 
@@ -105,96 +96,28 @@ namespace IVG {
 	std::vector<std::filesystem::path> FILES_IMAGES_ADJACENT;
 	uint32_t IMAGE_FILE_INDEX = 0;
 
-	// This the data read from and written to settings file.
-	// Adding a new value here will cause old config files to be discarded on first read.
-	struct IVSETTINGS {
-		int WIN_X;
-		int WIN_Y;
-		int WIN_W;
-		int WIN_H;
-		bool MAXIMIZED;
-		bool DISPLAY_MODE_DARK;
-	} SETTINGS;
-
-	// These are the default values for the settings.
-	// If adding a new setting, be sure to add a sensible default here too.
-	struct IVSETTINGS DEFAULTS = {
-		SDL_WINDOWPOS_UNDEFINED,
-		SDL_WINDOWPOS_UNDEFINED,
-		IVC::WIN_DEFAULT_W,
-		IVC::WIN_DEFAULT_H,
-		false,
-		true
-	};
+	/* Set settings to default values, to be overwritten if settings file is loaded */
+	struct IVUTIL::IVSETTINGS SETTINGS = IVC::DEFAULTS;
 }
 
 /* /// CODE /// */
 
-/**
-* readSettings - Load settings file if possible and recover window position and size.
-*/
-void readSettings() {
-	//if CWD is length 0, program was run from terminal and is CWD is unknown. Use default settings.
-	if (IVG::PATH_PROGRAM_CWD.empty()) {
-		std::cerr << IVC::LOG_NOTICE << "Unable to load settings file. Using defaults." << std::endl;
-		IVG::SETTINGS = IVG::DEFAULTS; //copy defaults
-		return;
+void pushSettings(Window* win) {
+	if (IVG::WIN_MOVED) { // window really was moved last
+		IVG::SETTINGS.WIN_X = win->x;
+		IVG::SETTINGS.WIN_Y = win->y;
 	}
-	//open filestream to read file at the end
-	std::ifstream inputStream(IVG::PATH_PROGRAM_CWD / IVC::FILENAME_SETTINGS, std::ifstream::in | std::ifstream::binary | std::ifstream::ate);
-	if (inputStream.is_open()) {
-		//current position is end, this will present filesize
-		int fileLength = inputStream.tellg();
-		if (fileLength == -1) { //read failed somewhere in iostream
-			std::cerr << IVC::LOG_NOTICE << "Failed to read settings file!" << std::endl;
-			IVG::SETTINGS = IVG::DEFAULTS; //copy defaults
-		}
-		else if ((unsigned) fileLength < sizeof(IVG::SETTINGS)) { //settings file is too short
-			std::cerr << IVC::LOG_WARNING << "Incorrect settings data size! [Expected " << sizeof(IVG::SETTINGS) << ", got " << fileLength << "]" << std::endl;
-			IVG::SETTINGS = IVG::DEFAULTS; //copy defaults
-		}
-		else { //no problems encountered
-			inputStream.seekg(std::ios_base::beg);
-			inputStream.read(reinterpret_cast<char *>(&IVG::SETTINGS), sizeof(IVG::SETTINGS));
-		}
-		inputStream.close();
+	else { // if window was 'moved' during resize, discard
+		IVG::SETTINGS.WIN_X = win->px;
+		IVG::SETTINGS.WIN_Y = win->py;
 	}
-	else { //load defaults
-		std::cerr << IVC::LOG_NOTICE << "No settings file located!" << std::endl;
-		IVG::SETTINGS = IVG::DEFAULTS; //copy defaults
+	if (IVG::SETTINGS.MAXIMIZED) { // if the window is maximized, write the last known size before it was maximized
+		IVG::SETTINGS.WIN_W = win->pw;
+		IVG::SETTINGS.WIN_H = win->ph;
 	}
-}
-
-/**
-* writeSettings - Collect window settings and write to settings file, if it can be written in a valid location
-*/
-void writeSettings(Window* win) {
-	//working directory wasn't set, don't write anything
-	if (IVG::PATH_PROGRAM_CWD.empty()) return;
-	std::ofstream outputStream(IVG::PATH_PROGRAM_CWD / IVC::FILENAME_SETTINGS, std::ifstream::out | std::ifstream::binary | std::ifstream::trunc);
-	if (outputStream.is_open()) {
-		if (IVG::WIN_MOVED) { // window really was moved last
-			IVG::SETTINGS.WIN_X = win->x;
-			IVG::SETTINGS.WIN_Y = win->y;
-		}
-		else { // if window was 'moved' during resize, discard
-			IVG::SETTINGS.WIN_X = win->px;
-			IVG::SETTINGS.WIN_Y = win->py;
-		}
-		if (IVG::SETTINGS.MAXIMIZED) { // if the window is maximized, write the last known size before it was maximized
-			IVG::SETTINGS.WIN_W = win->pw;
-			IVG::SETTINGS.WIN_H = win->ph;
-		}
-		else { // write the current size
-			IVG::SETTINGS.WIN_W = win->w;
-			IVG::SETTINGS.WIN_H = win->h;
-		}
-
-		outputStream.write(reinterpret_cast<char *>(&IVG::SETTINGS), sizeof(IVG::SETTINGS));
-		outputStream.close();
-	}
-	else {
-		std::cerr << IVC::LOG_ERROR << "Could not write to settings file!" << std::endl;
+	else { // write the current size
+		IVG::SETTINGS.WIN_W = win->w;
+		IVG::SETTINGS.WIN_H = win->h;
 	}
 }
 
@@ -277,7 +200,7 @@ int loadTextureFromFile(std::string filePath, Window* win, SDL_Texture** imageTe
 
 	//image load call returned null, indicating failure
 	if (!imageSurface) {
-		std::cerr << IVC::LOG_ERROR << IMG_GetError() << std::endl;
+		std::cerr << IVUTIL::LOG_ERROR << IMG_GetError() << std::endl;
 		return 1;
 	}
 
@@ -316,57 +239,6 @@ void draw(Window* win, SDL_Texture* tile_texture, SDL_Texture* image_texture) {
 	SDL_RenderPresent(win->renderer);
 }
 
-/**
-* formatSupport	- Compare file extension provided to known list to confirm support
-* extension 	> File extension as String
-* return - int 	< IVC::FILE_TYPE of file type or -1 if no match
-*/
-int formatSupport(std::string extension) {
-	// convert character to upper case for comparison
-	auto upper = [](char a) -> char {
-		if (a > 0x60 && a < 0x7B) return (char) (a - 0x20);
-		else return a;
-	};
-
-	// convert extension string, ignoring leading dot
-	std::string extensionUppercase = "";
-	for (unsigned i = 1; i < extension.length(); i++) {
-		extensionUppercase += upper(extension[i]);
-	}
-	
-	// sort by first character of extension
-	switch (extensionUppercase[0]) {
-		case 'J':
-			/* JP(E)G */
-			if (!extensionUppercase.compare("JPG"))  return IVC::JPG;
-			if (!extensionUppercase.compare("JPEG")) return IVC::JPG;
-			break;
-		case 'P':
-			/* PNG */
-			if (!extensionUppercase.compare("PNG"))  return IVC::PNG;
-			break;
-		case 'G':
-			/* GIF */
-			if (!extensionUppercase.compare("GIF"))  return IVC::GIF;
-			break;
-		case 'B':
-			/* BMP */
-			if (!extensionUppercase.compare("BMP"))  return IVC::BMP;
-			break;
-		case 'T':
-			/* TIF(F) */
-			if (!extensionUppercase.compare("TIF"))  return IVC::TIF;
-			if (!extensionUppercase.compare("TIFF")) return IVC::TIF;
-			/* TGA */
-			if (!extensionUppercase.compare("TGA"))  return IVC::TGA;
-			break;
-		default:
-			return -1;
-	}
-
-	return -1;
-}
-
 /* Format and return version string */
 std::string versionToString(SDL_version* version) {
 	return std::to_string(version->major) + '.' + std::to_string(version->minor) + '.' + std::to_string(version->patch);
@@ -382,7 +254,7 @@ int main(int argc, char* argv[]) {
 	SDL_VERSION(&IVC::SDL_COMPILED_VERSION);
 	SDL_IMAGE_VERSION(&IVC::SDL_IMAGE_COMPILED_VERSION);
 
-	IVC::VERSION_ABOUT = IVC::APPLICATION_TITLE + " " + IVC::IVVERSION
+	IVC::VERSION_ABOUT = IVUTIL::APPLICATION_TITLE + " " + IVC::IVVERSION
 							+ "\nBUILT " + IVC::BUILD_DATE + " " + IVC::BUILD_TIME 
 							+ "\nGCC " + versionToString(&IVC::GCC_COMPILER_VERSION)
 							+ "\nSTD " + std::to_string(IVC::CPP_STANDARD)
@@ -394,7 +266,7 @@ int main(int argc, char* argv[]) {
 		if (argv[i][0] == '-') {
 			switch (argv[i][1]) {
 				case 'v': //-v will print version info
-					std::cout << "=== ABOUT: " << IVC::APPLICATION_TITLE << " ===" << std::endl;
+					std::cout << "=== ABOUT: " << IVUTIL::APPLICATION_TITLE << " ===" << std::endl;
 					std::cout << IVC::VERSION_ABOUT << std::endl;
 					return 0;
 				default: ///no other flags defined yet
@@ -406,7 +278,7 @@ int main(int argc, char* argv[]) {
 
 	/* Confirm video is available and set up */
 	if (SDL_Init(SDL_INIT_VIDEO) < 0) {
-		std::cerr << IVC::LOG_ERROR << "SDL COULD NOT BE INITIALIZED!" << std::endl;
+		std::cerr << IVUTIL::LOG_ERROR << "SDL COULD NOT BE INITIALIZED!" << std::endl;
 		return 1;
 	}
 
@@ -417,38 +289,38 @@ int main(int argc, char* argv[]) {
 	GetModuleFileNameA(NULL, EXE_PATH, MAX_PATH); //Windows system call to get executable's path
 	IVG::PATH_PROGRAM_CWD = std::filesystem::path(EXE_PATH).parent_path(); //Collect parent folder path for CWD
 
-	readSettings();
+	IVUTIL::readSettings(IVG::PATH_PROGRAM_CWD / IVC::FILENAME_SETTINGS, &IVG::SETTINGS);
 
 	/* Create invisible application window */
 	Window win(IVG::SETTINGS.WIN_W, IVG::SETTINGS.WIN_H, IVG::SETTINGS.WIN_X, IVG::SETTINGS.WIN_Y, SDL_WINDOW_SHOWN | SDL_WINDOW_RESIZABLE | (IVG::SETTINGS.MAXIMIZED ? SDL_WINDOW_MAXIMIZED : 0));
-	win.setTitle(IVC::APPLICATION_TITLE.c_str());
+	win.setTitle(IVUTIL::APPLICATION_TITLE.c_str());
 
 	//no file passed in
 	if (argc < 2) {
-		std::cerr << IVC::LOG_ERROR << "No arguments provided!" << std::endl;
+		std::cerr << IVUTIL::LOG_ERROR << "No arguments provided!" << std::endl;
 		MessageBox(nullptr, "Please provide a path to an image file!", "No filename provided!", MB_OK | MB_ICONERROR);
 		return 1;
 	}
 
 	//try to improve zoom quality by improving sampling technique
 	if (SDL_SetHint(SDL_HINT_RENDER_SCALE_QUALITY, "1")) {
-		std::cout << IVC::LOG_NOTICE << "Set filtering to linear." << std::endl;
+		std::cout << IVUTIL::LOG_NOTICE << "Set filtering to linear." << std::endl;
 	}
 	//note failure and continue with default sampling
 	else {
-		std::cout << IVC::LOG_NOTICE << "Sampling defaulting to nearest neighbour." << std::endl;
+		std::cout << IVUTIL::LOG_NOTICE << "Sampling defaulting to nearest neighbour." << std::endl;
 	}
 
 	//create checkerboard background textures for transparent images
-	IVG::TEXTURE_DARK = new TiledTexture(win.renderer, IVC::RES_CHECKERBOARD, IVC::RES_CHECKERBOARD, IVC::COLOUR_D_L, IVC::COLOUR_D_D);
-	IVG::TEXTURE_LIGHT = new TiledTexture(win.renderer, IVC::RES_CHECKERBOARD, IVC::RES_CHECKERBOARD, IVC::COLOUR_L_L, IVC::COLOUR_L_D);
+	TiledTexture TEXTURE_DARK(win.renderer, IVC::RES_CHECKERBOARD, IVC::RES_CHECKERBOARD, IVC::COLOUR_D_L, IVC::COLOUR_D_D);
+	TiledTexture TEXTURE_LIGHT(win.renderer, IVC::RES_CHECKERBOARD, IVC::RES_CHECKERBOARD, IVC::COLOUR_L_L, IVC::COLOUR_L_D);
 
 	//draw background texture before continuing to show program is loading
-	draw(&win, (IVG::SETTINGS.DISPLAY_MODE_DARK) ? IVG::TEXTURE_DARK->texture : IVG::TEXTURE_LIGHT->texture, imageTexture);
+	draw(&win, (IVG::SETTINGS.DISPLAY_MODE_DARK) ? TEXTURE_DARK.texture : TEXTURE_LIGHT.texture, imageTexture);
 
 	//load up the image passed in
 	if (loadTextureFromFile(std::string(argv[1]), &win, &imageTexture)) {
-		std::cerr << IVC::LOG_ERROR << IMG_GetError() << std::endl;
+		std::cerr << IVUTIL::LOG_ERROR << IMG_GetError() << std::endl;
 		return 1;
 	}
 
@@ -457,23 +329,23 @@ int main(int argc, char* argv[]) {
 		IVG::PATH_FILE_IMAGE = std::filesystem::canonical(std::filesystem::path(argv[1]));
 	} catch (const std::filesystem::filesystem_error& e) {
 		//this happens when there are UTF-8 characters in the path. std::fs bug?
-		std::cerr << IVC::LOG_ERROR << e.what() << std::endl;
+		std::cerr << IVUTIL::LOG_ERROR << e.what() << std::endl;
 		MessageBox(nullptr, "This can be the result of the path containing UTF-8 characters.\n"
 							"Check for invalid or suspect characters in folders or filename.", 
 							"Could not resolve canonical file path!", MB_OK | MB_ICONERROR);
 		return 1;
 	}
 	//update window title with image filename
-	win.setTitle((IVG::PATH_FILE_IMAGE.filename().string() + " - " + IVC::APPLICATION_TITLE).c_str());
+	win.setTitle((IVG::PATH_FILE_IMAGE.filename().string() + " - " + IVUTIL::APPLICATION_TITLE).c_str());
 
 	//finally draw image and background
-	draw(&win, (IVG::SETTINGS.DISPLAY_MODE_DARK) ? IVG::TEXTURE_DARK->texture : IVG::TEXTURE_LIGHT->texture, imageTexture);
+	draw(&win, (IVG::SETTINGS.DISPLAY_MODE_DARK) ? TEXTURE_DARK.texture : TEXTURE_LIGHT.texture, imageTexture);
 
 	//iterate image folder and mark position of currently open image
 	int pos = 0;
 	for(auto& entry : std::filesystem::directory_iterator(IVG::PATH_FILE_IMAGE.parent_path())) {
 		//test that file is real file not link, folder, etc. and check it is a supported image format
-		if (std::filesystem::is_regular_file(entry) && (formatSupport(entry.path().extension().string()) >= 0)) {
+		if (std::filesystem::is_regular_file(entry) && (IVUTIL::formatSupport(entry.path().extension().string()) >= 0)) {
 			//add file to list of images
 			IVG::FILES_IMAGES_ADJACENT.push_back(entry.path());
 			//if this is the image currently open, record position
@@ -482,7 +354,7 @@ int main(int argc, char* argv[]) {
 		}
 	}
 
-	std::cout << IVC::LOG_NOTICE << "Found " << IVG::FILES_IMAGES_ADJACENT.size() << " images adjacent." << std::endl;
+	std::cout << IVUTIL::LOG_NOTICE << "Found " << IVG::FILES_IMAGES_ADJACENT.size() << " images adjacent." << std::endl;
 
 	int mouseX;
 	int mouseY;
@@ -515,7 +387,7 @@ int main(int argc, char* argv[]) {
 						case SDL_WINDOWEVENT_SIZE_CHANGED:
 							IVG::SETTINGS.MAXIMIZED = false;
 							win.updateWindowSize();
-							draw(&win, (IVG::SETTINGS.DISPLAY_MODE_DARK) ? IVG::TEXTURE_DARK->texture : IVG::TEXTURE_LIGHT->texture, imageTexture);
+							draw(&win, (IVG::SETTINGS.DISPLAY_MODE_DARK) ? TEXTURE_DARK.texture : TEXTURE_LIGHT.texture, imageTexture);
 							break;
 					}
 					break;
@@ -524,37 +396,37 @@ int main(int argc, char* argv[]) {
 						case SDLK_EQUALS:  //equals with plus secondary
 						case SDLK_KP_PLUS: //or keypad plus, zoom in
 							IVG::VIEWPORT_ZOOM = std::min(IVC::ZOOM_MAX, IVG::VIEWPORT_ZOOM * 2.0f);
-							draw(&win, (IVG::SETTINGS.DISPLAY_MODE_DARK) ? IVG::TEXTURE_DARK->texture : IVG::TEXTURE_LIGHT->texture, imageTexture);
+							draw(&win, (IVG::SETTINGS.DISPLAY_MODE_DARK) ? TEXTURE_DARK.texture : TEXTURE_LIGHT.texture, imageTexture);
 							break;
 						case SDLK_MINUS:    //standard minus
 						case SDLK_KP_MINUS: //or keypad minus, zoom out
 							IVG::VIEWPORT_ZOOM = std::max(IVC::ZOOM_MIN, IVG::VIEWPORT_ZOOM / 2.0f);
-							draw(&win, (IVG::SETTINGS.DISPLAY_MODE_DARK) ? IVG::TEXTURE_DARK->texture : IVG::TEXTURE_LIGHT->texture, imageTexture);
+							draw(&win, (IVG::SETTINGS.DISPLAY_MODE_DARK) ? TEXTURE_DARK.texture : TEXTURE_LIGHT.texture, imageTexture);
 							break;
 						case SDLK_0:    //standard 0
 						case SDLK_KP_0: //or keypad 0, reset zoom and positioning
 							resetViewport();
-							draw(&win, (IVG::SETTINGS.DISPLAY_MODE_DARK) ? IVG::TEXTURE_DARK->texture : IVG::TEXTURE_LIGHT->texture, imageTexture);
+							draw(&win, (IVG::SETTINGS.DISPLAY_MODE_DARK) ? TEXTURE_DARK.texture : TEXTURE_LIGHT.texture, imageTexture);
 							break;
 						case SDLK_ESCAPE: //quit
 							quit = true;
 							break;
 						case SDLK_F1: //help
-							MessageBox(nullptr, IVC::VERSION_ABOUT.c_str(), ("About " + IVC::APPLICATION_TITLE).c_str(), MB_OK | MB_ICONINFORMATION);
+							MessageBox(nullptr, IVC::VERSION_ABOUT.c_str(), ("About " + IVUTIL::APPLICATION_TITLE).c_str(), MB_OK | MB_ICONINFORMATION);
 							break;
 						case SDLK_TAB: //toggle light mode
 							IVG::SETTINGS.DISPLAY_MODE_DARK = !IVG::SETTINGS.DISPLAY_MODE_DARK;
-							draw(&win, (IVG::SETTINGS.DISPLAY_MODE_DARK) ? IVG::TEXTURE_DARK->texture : IVG::TEXTURE_LIGHT->texture, imageTexture);
+							draw(&win, (IVG::SETTINGS.DISPLAY_MODE_DARK) ? TEXTURE_DARK.texture : TEXTURE_LIGHT.texture, imageTexture);
 							break;
 						case SDLK_DELETE: //delete image
 							if (IDYES == MessageBox(nullptr, "Are you sure you want to permanently delete this image?\nThis action cannot be reversed!", "Delete Image", MB_YESNO | MB_DEFBUTTON2 | MB_ICONEXCLAMATION)) {
 								try { //success
 									std::filesystem::remove(IVG::FILES_IMAGES_ADJACENT[IVG::IMAGE_FILE_INDEX]);
-									std::cout << IVC::LOG_NOTICE << "File deleted: " << IVG::FILES_IMAGES_ADJACENT[IVG::IMAGE_FILE_INDEX].string() << std::endl;
+									std::cout << IVUTIL::LOG_NOTICE << "File deleted: " << IVG::FILES_IMAGES_ADJACENT[IVG::IMAGE_FILE_INDEX].string() << std::endl;
 								}
 								catch (const std::filesystem::filesystem_error& e) { //failure
-									std::cerr << IVC::LOG_WARNING << "File could not be deleted: " << IVG::FILES_IMAGES_ADJACENT[IVG::IMAGE_FILE_INDEX].string() << std::endl;
-									std::cerr << IVC::LOG_WARNING << e.what() << std::endl;
+									std::cerr << IVUTIL::LOG_WARNING << "File could not be deleted: " << IVG::FILES_IMAGES_ADJACENT[IVG::IMAGE_FILE_INDEX].string() << std::endl;
+									std::cerr << IVUTIL::LOG_WARNING << e.what() << std::endl;
 									MessageBox(nullptr, "Image could not be deleted.", "Image Deletion Failure", MB_OK | MB_ICONERROR);
 									break;
 								}
@@ -571,26 +443,26 @@ int main(int argc, char* argv[]) {
 							if (IVG::FILES_IMAGES_ADJACENT.size() == 1) break; //there's only one image in the folder so don't move
 							if (IVG::IMAGE_FILE_INDEX == 0) IVG::IMAGE_FILE_INDEX = IVG::FILES_IMAGES_ADJACENT.size() - 1; //loop back to end of image file list
 							else IVG::IMAGE_FILE_INDEX--;
-							win.setTitle((IVG::FILES_IMAGES_ADJACENT[IVG::IMAGE_FILE_INDEX].filename().string() + " - " + IVC::APPLICATION_TITLE).c_str()); //update window title
+							win.setTitle((IVG::FILES_IMAGES_ADJACENT[IVG::IMAGE_FILE_INDEX].filename().string() + " - " + IVUTIL::APPLICATION_TITLE).c_str()); //update window title
 							if (loadTextureFromFile(std::filesystem::canonical(IVG::FILES_IMAGES_ADJACENT[IVG::IMAGE_FILE_INDEX]).string(), &win, &imageTexture)) { //if call returned non-zero, there was an error
-								std::cerr << IVC::LOG_ERROR << IMG_GetError() << std::endl;
+								std::cerr << IVUTIL::LOG_ERROR << IMG_GetError() << std::endl;
 								break;
 							}
 							resetViewport(); //new image so reset zoom and positioning
-							draw(&win, (IVG::SETTINGS.DISPLAY_MODE_DARK) ? IVG::TEXTURE_DARK->texture : IVG::TEXTURE_LIGHT->texture, imageTexture);
+							draw(&win, (IVG::SETTINGS.DISPLAY_MODE_DARK) ? TEXTURE_DARK.texture : TEXTURE_LIGHT.texture, imageTexture);
 							break;
 						//next image
 						case SDLK_RIGHT: //move forward
 							if (IVG::FILES_IMAGES_ADJACENT.size() == 1) break; //there's only one image in the folder so don't move
 							IVG::IMAGE_FILE_INDEX++;
 							if (IVG::IMAGE_FILE_INDEX >= IVG::FILES_IMAGES_ADJACENT.size()) IVG::IMAGE_FILE_INDEX = 0; //loop back to start of image file list
-							win.setTitle((IVG::FILES_IMAGES_ADJACENT[IVG::IMAGE_FILE_INDEX].filename().string() + " - " + IVC::APPLICATION_TITLE).c_str()); //update window title
+							win.setTitle((IVG::FILES_IMAGES_ADJACENT[IVG::IMAGE_FILE_INDEX].filename().string() + " - " + IVUTIL::APPLICATION_TITLE).c_str()); //update window title
 							if (loadTextureFromFile(std::filesystem::canonical(IVG::FILES_IMAGES_ADJACENT[IVG::IMAGE_FILE_INDEX]).string(), &win, &imageTexture)) { //if call returned non-zero, there was an error
-								std::cerr << IVC::LOG_ERROR << IMG_GetError() << std::endl;
+								std::cerr << IVUTIL::LOG_ERROR << IMG_GetError() << std::endl;
 								break;
 							}
 							resetViewport(); //new image so reset zoom and positioning
-							draw(&win, (IVG::SETTINGS.DISPLAY_MODE_DARK) ? IVG::TEXTURE_DARK->texture : IVG::TEXTURE_LIGHT->texture, imageTexture);
+							draw(&win, (IVG::SETTINGS.DISPLAY_MODE_DARK) ? TEXTURE_DARK.texture : TEXTURE_LIGHT.texture, imageTexture);
 							break;
 					}
 					break;
@@ -604,7 +476,7 @@ int main(int argc, char* argv[]) {
 						IVG::VIEWPORT_X *= IVC::ZOOM_SCROLL_SENSITIVITY;
 						IVG::VIEWPORT_Y *= IVC::ZOOM_SCROLL_SENSITIVITY;
 
-						draw(&win, (IVG::SETTINGS.DISPLAY_MODE_DARK) ? IVG::TEXTURE_DARK->texture : IVG::TEXTURE_LIGHT->texture, imageTexture);
+						draw(&win, (IVG::SETTINGS.DISPLAY_MODE_DARK) ? TEXTURE_DARK.texture : TEXTURE_LIGHT.texture, imageTexture);
 					}
 					else if (sdlEvent.wheel.y < 0) {
 						IVG::VIEWPORT_ZOOM = std::max(IVC::ZOOM_MIN, IVG::VIEWPORT_ZOOM / IVC::ZOOM_SCROLL_SENSITIVITY);
@@ -613,7 +485,7 @@ int main(int argc, char* argv[]) {
 						IVG::VIEWPORT_X /= IVC::ZOOM_SCROLL_SENSITIVITY;
 						IVG::VIEWPORT_Y /= IVC::ZOOM_SCROLL_SENSITIVITY;
 
-						draw(&win, (IVG::SETTINGS.DISPLAY_MODE_DARK) ? IVG::TEXTURE_DARK->texture : IVG::TEXTURE_LIGHT->texture, imageTexture);
+						draw(&win, (IVG::SETTINGS.DISPLAY_MODE_DARK) ? TEXTURE_DARK.texture : TEXTURE_LIGHT.texture, imageTexture);
 					}
 					break;
 				case SDL_MOUSEBUTTONDOWN:
@@ -624,7 +496,7 @@ int main(int argc, char* argv[]) {
 							break;
 						case SDL_BUTTON_MIDDLE:
 							resetViewport();
-							draw(&win, (IVG::SETTINGS.DISPLAY_MODE_DARK) ? IVG::TEXTURE_DARK->texture : IVG::TEXTURE_LIGHT->texture, imageTexture);
+							draw(&win, (IVG::SETTINGS.DISPLAY_MODE_DARK) ? TEXTURE_DARK.texture : TEXTURE_LIGHT.texture, imageTexture);
 							break;
 						case SDL_BUTTON_X1:
 							//bind mouse back button to left arrow to return to previous image
@@ -660,7 +532,7 @@ int main(int argc, char* argv[]) {
 						SDL_GetMouseState(&mouseX, &mouseY);
 						IVG::VIEWPORT_X += mouseX - mousePreviousX;
 						IVG::VIEWPORT_Y += mouseY - mousePreviousY;
-						draw(&win, (IVG::SETTINGS.DISPLAY_MODE_DARK) ? IVG::TEXTURE_DARK->texture : IVG::TEXTURE_LIGHT->texture, imageTexture);
+						draw(&win, (IVG::SETTINGS.DISPLAY_MODE_DARK) ? TEXTURE_DARK.texture : TEXTURE_LIGHT.texture, imageTexture);
 					}
 					break;
 
@@ -669,7 +541,8 @@ int main(int argc, char* argv[]) {
 		std::this_thread::sleep_for(std::chrono::milliseconds(10));
 	}
 
-	writeSettings(&win);
+	pushSettings(&win);
+	IVUTIL::writeSettings(IVG::PATH_PROGRAM_CWD / IVC::FILENAME_SETTINGS, &IVG::SETTINGS);
 
 	return 0;
 }
