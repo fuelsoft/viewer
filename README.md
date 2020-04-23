@@ -32,17 +32,18 @@ Also, it's GPU accelerated (via SDL's Accelerated Rendering features). There are
 This project depends on:
 * [SDL2](https://www.libsdl.org/download-2.0.php)
 * [SDL_image](https://www.libsdl.org/projects/SDL_image/)
-* C++17 for std::filesystem
+* C++17 for std::filesystem (you'll need mingw64 from MSYS2 for this)
 * Windows for system calls. This would be a pain to port.
 
 That's it. So far.
 
 ## Building:
-This is where it gets tricky. I'm using Code::Blocks to write this, which abstracts away the build system.
-
-It should work with little extra effort by just plugging the CPP files into GCC and linking in SDL2 and SDL_image.
-
-I will work on migrating to a makefile-type build to simplify this at some point.
+Run `make <type>` in the Viewer folder where type is either `Debug` or `Release` (defaults to `Release`).
+#### Notes:
+* If your `make.exe` isn't on your PATH, you need to launch it via it's complete path or hard link it into the Viewer directory.
+* You will need to modify the makefile at the marked lines to point to your mingw64 install (for `g++` and `windres`).
+* You will also need to point to the library include and lib folders - myself, I combined my SDL2 and SDL_image files to simplify this.
+* These are mostly just the build commands as CodeBlocks runs them - they may not always be up to date enough to build the project without modification.
 
 ## Usage:
 First, ensure that the executable has all the `.dll` files next to it. There are two groups you need:
