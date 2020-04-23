@@ -28,7 +28,8 @@ Window::Window(int w, int h, int x, int y, uint32_t flags) {
 	SDL_UpdateWindowSurface(window);
 
 	if (!SDL_GetRenderer(window)) {
-		renderer = SDL_CreateRenderer(window, -1, SDL_RENDERER_ACCELERATED | SDL_RENDERER_PRESENTVSYNC);
+		/* Framerate matching handled in main loop now, so vsync is disabled */
+		renderer = SDL_CreateRenderer(window, -1, SDL_RENDERER_ACCELERATED /*| SDL_RENDERER_PRESENTVSYNC*/);
 	}
 	else {
 		renderer = SDL_GetRenderer(window);

@@ -86,6 +86,9 @@ namespace IVG {
 	int VIEWPORT_Y = 0;
 	float VIEWPORT_ZOOM = 1.0f;
 
+	// a sensible default
+	int REFRESH_RATE = 60;
+
 	/* INPUT */
 	bool MOUSE_CLICK_STATE_LEFT = false;
 
@@ -179,11 +182,11 @@ void redrawImage(Window* win, SDL_Texture* imageTexture) {
 * win 				> Target Window object
 * tileTexture 		> Texture as SDL_Texture to tile
 */
-void drawTileTexture(Window* win, SDL_Texture* tileTexture) {
-	for (int h = 0; h < win->h; h += IVC::RES_CHECKERBOARD){
-		for (int w = 0; w < win->w; w += IVC::RES_CHECKERBOARD){
-			SDL_Rect destination = {w, h, IVC::RES_CHECKERBOARD, IVC::RES_CHECKERBOARD};
-			SDL_RenderCopy(win->renderer, tileTexture, 0, &destination);
+void drawTileTexture(Window* win, TiledTexture* tiledTexture) {
+	for (int h = 0; h < win->h; h += tiledTexture->h){
+		for (int w = 0; w < win->w; w += tiledTexture->w){
+			SDL_Rect destination = {w, h, tiledTexture->w, tiledTexture->h};
+			SDL_RenderCopy(win->renderer, tiledTexture->texture, 0, &destination);
 		}
 	}
 }
@@ -232,9 +235,9 @@ void resetViewport() {
 * tileTexture 	> Texture as SDL_Texture to tile
 * imageTexture 	> Image as SDL_Texture
 */
-void draw(Window* win, SDL_Texture* tile_texture, SDL_Texture* image_texture) {
+void draw(Window* win, TiledTexture* BGTiledTexture, SDL_Texture* image_texture) {
 	SDL_RenderClear(win->renderer);
-	if (tile_texture) drawTileTexture(win, tile_texture);
+	drawTileTexture(win, BGTiledTexture);
 	if (image_texture) redrawImage(win, image_texture);
 	SDL_RenderPresent(win->renderer);
 }
@@ -282,6 +285,7 @@ int main(int argc, char* argv[]) {
 		return 1;
 	}
 
+	SDL_DisplayMode displayMode;
 	SDL_Event sdlEvent;
 	SDL_Texture* imageTexture = nullptr;
 
@@ -295,60 +299,64 @@ int main(int argc, char* argv[]) {
 	Window win(IVG::SETTINGS.WIN_W, IVG::SETTINGS.WIN_H, IVG::SETTINGS.WIN_X, IVG::SETTINGS.WIN_Y, SDL_WINDOW_SHOWN | SDL_WINDOW_RESIZABLE | (IVG::SETTINGS.MAXIMIZED ? SDL_WINDOW_MAXIMIZED : 0));
 	win.setTitle(IVUTIL::APPLICATION_TITLE.c_str());
 
-	//no file passed in
+	if (!SDL_GetCurrentDisplayMode(SDL_GetWindowDisplayIndex(win.window), &displayMode)) {
+		IVG::REFRESH_RATE = displayMode.refresh_rate;
+	}
+
+	// No file passed in
 	if (argc < 2) {
 		std::cerr << IVUTIL::LOG_ERROR << "No arguments provided!" << std::endl;
 		MessageBox(nullptr, "Please provide a path to an image file!", "No filename provided!", MB_OK | MB_ICONERROR);
 		return 1;
 	}
 
-	//try to improve zoom quality by improving sampling technique
+	// Try to improve zoom quality by improving sampling technique
 	if (SDL_SetHint(SDL_HINT_RENDER_SCALE_QUALITY, "1")) {
 		std::cout << IVUTIL::LOG_NOTICE << "Set filtering to linear." << std::endl;
 	}
-	//note failure and continue with default sampling
+	// Note failure and continue with default sampling
 	else {
 		std::cout << IVUTIL::LOG_NOTICE << "Sampling defaulting to nearest neighbour." << std::endl;
 	}
 
-	//create checkerboard background textures for transparent images
+	// Create checkerboard background textures for transparent images
 	TiledTexture TEXTURE_DARK(win.renderer, IVC::RES_CHECKERBOARD, IVC::RES_CHECKERBOARD, IVC::COLOUR_D_L, IVC::COLOUR_D_D);
 	TiledTexture TEXTURE_LIGHT(win.renderer, IVC::RES_CHECKERBOARD, IVC::RES_CHECKERBOARD, IVC::COLOUR_L_L, IVC::COLOUR_L_D);
 
-	//draw background texture before continuing to show program is loading
-	draw(&win, (IVG::SETTINGS.DISPLAY_MODE_DARK) ? TEXTURE_DARK.texture : TEXTURE_LIGHT.texture, imageTexture);
+	// Draw background texture before continuing to show program is loading
+	draw(&win, (IVG::SETTINGS.DISPLAY_MODE_DARK) ? &TEXTURE_DARK : &TEXTURE_LIGHT, nullptr);
 
-	//load up the image passed in
+	// Load up the image passed in
 	if (loadTextureFromFile(std::string(argv[1]), &win, &imageTexture)) {
 		std::cerr << IVUTIL::LOG_ERROR << IMG_GetError() << std::endl;
 		return 1;
 	}
 
 	try {
-		//determine image filename
+		// Determine image filename
 		IVG::PATH_FILE_IMAGE = std::filesystem::canonical(std::filesystem::path(argv[1]));
 	} catch (const std::filesystem::filesystem_error& e) {
-		//this happens when there are UTF-8 characters in the path. std::fs bug?
+		// This happens when there are UTF-8 characters in the path. std::fs bug?
 		std::cerr << IVUTIL::LOG_ERROR << e.what() << std::endl;
 		MessageBox(nullptr, "This can be the result of the path containing UTF-8 characters.\n"
 							"Check for invalid or suspect characters in folders or filename.", 
 							"Could not resolve canonical file path!", MB_OK | MB_ICONERROR);
 		return 1;
 	}
-	//update window title with image filename
+	// Update window title with image filename
 	win.setTitle((IVG::PATH_FILE_IMAGE.filename().string() + " - " + IVUTIL::APPLICATION_TITLE).c_str());
 
-	//finally draw image and background
-	draw(&win, (IVG::SETTINGS.DISPLAY_MODE_DARK) ? TEXTURE_DARK.texture : TEXTURE_LIGHT.texture, imageTexture);
+	// Finally draw image and background
+	draw(&win, (IVG::SETTINGS.DISPLAY_MODE_DARK) ? &TEXTURE_DARK : &TEXTURE_LIGHT, imageTexture);
 
-	//iterate image folder and mark position of currently open image
+	// Iterate image folder and mark position of currently open image
 	int pos = 0;
 	for(auto& entry : std::filesystem::directory_iterator(IVG::PATH_FILE_IMAGE.parent_path())) {
-		//test that file is real file not link, folder, etc. and check it is a supported image format
+		// Test that file is real file not link, folder, etc. and check it is a supported image format
 		if (std::filesystem::is_regular_file(entry) && (IVUTIL::formatSupport(entry.path().extension().string()) >= 0)) {
-			//add file to list of images
+			// Add file to list of images
 			IVG::FILES_IMAGES_ADJACENT.push_back(entry.path());
-			//if this is the image currently open, record position
+			// If this is the image currently open, record position
 			if (entry.path() == IVG::PATH_FILE_IMAGE) IVG::IMAGE_FILE_INDEX = pos;
 			pos++;
 		}
@@ -361,12 +369,27 @@ int main(int argc, char* argv[]) {
 	int mousePreviousX;
 	int mousePreviousY;
 
-	//While application is running
+	/* LIMIT REDRAW RATE:
+		Instead of redrawing on every event and taking the hit waiting for VSYNC,
+		if there are ANY changes requiring redraw, mark them, continue processing
+		events and once the queue is empty, draw once.
+	*/
+	bool redraw = false;
+	
+	/* IMPROVE FRAMERATE MANAGEMENT:
+		Rather than using a constant delay and relying on SDL's renderer vsync,
+		manage time tracking here. Enables higher and more consistent frame rates.
+	*/
+	std::chrono::steady_clock::time_point time_before = std::chrono::steady_clock::now();
+	std::chrono::steady_clock::time_point time_after = std::chrono::steady_clock::now();
+	int baseline_delay = 1000/(float) IVG::REFRESH_RATE;
+	int execution_time = 0;
+
+	// While application is running
 	while (!quit) {
-		//Handle events on queue
+		// Handle events on queue
 		while (SDL_PollEvent(&sdlEvent) != 0) {
 			switch (sdlEvent.type) {
-				//User requests quit
 				case SDL_QUIT:
 					quit = true;
 					break;
@@ -387,7 +410,7 @@ int main(int argc, char* argv[]) {
 						case SDL_WINDOWEVENT_SIZE_CHANGED:
 							IVG::SETTINGS.MAXIMIZED = false;
 							win.updateWindowSize();
-							draw(&win, (IVG::SETTINGS.DISPLAY_MODE_DARK) ? TEXTURE_DARK.texture : TEXTURE_LIGHT.texture, imageTexture);
+							redraw = true;
 							break;
 					}
 					break;
@@ -396,17 +419,17 @@ int main(int argc, char* argv[]) {
 						case SDLK_EQUALS:  //equals with plus secondary
 						case SDLK_KP_PLUS: //or keypad plus, zoom in
 							IVG::VIEWPORT_ZOOM = std::min(IVC::ZOOM_MAX, IVG::VIEWPORT_ZOOM * 2.0f);
-							draw(&win, (IVG::SETTINGS.DISPLAY_MODE_DARK) ? TEXTURE_DARK.texture : TEXTURE_LIGHT.texture, imageTexture);
+							redraw = true;
 							break;
 						case SDLK_MINUS:    //standard minus
 						case SDLK_KP_MINUS: //or keypad minus, zoom out
 							IVG::VIEWPORT_ZOOM = std::max(IVC::ZOOM_MIN, IVG::VIEWPORT_ZOOM / 2.0f);
-							draw(&win, (IVG::SETTINGS.DISPLAY_MODE_DARK) ? TEXTURE_DARK.texture : TEXTURE_LIGHT.texture, imageTexture);
+							redraw = true;
 							break;
 						case SDLK_0:    //standard 0
 						case SDLK_KP_0: //or keypad 0, reset zoom and positioning
 							resetViewport();
-							draw(&win, (IVG::SETTINGS.DISPLAY_MODE_DARK) ? TEXTURE_DARK.texture : TEXTURE_LIGHT.texture, imageTexture);
+							redraw = true;
 							break;
 						case SDLK_ESCAPE: //quit
 							quit = true;
@@ -416,7 +439,7 @@ int main(int argc, char* argv[]) {
 							break;
 						case SDLK_TAB: //toggle light mode
 							IVG::SETTINGS.DISPLAY_MODE_DARK = !IVG::SETTINGS.DISPLAY_MODE_DARK;
-							draw(&win, (IVG::SETTINGS.DISPLAY_MODE_DARK) ? TEXTURE_DARK.texture : TEXTURE_LIGHT.texture, imageTexture);
+							redraw = true;
 							break;
 						case SDLK_DELETE: //delete image
 							if (IDYES == MessageBox(nullptr, "Are you sure you want to permanently delete this image?\nThis action cannot be reversed!", "Delete Image", MB_YESNO | MB_DEFBUTTON2 | MB_ICONEXCLAMATION)) {
@@ -449,7 +472,7 @@ int main(int argc, char* argv[]) {
 								break;
 							}
 							resetViewport(); //new image so reset zoom and positioning
-							draw(&win, (IVG::SETTINGS.DISPLAY_MODE_DARK) ? TEXTURE_DARK.texture : TEXTURE_LIGHT.texture, imageTexture);
+							redraw = true;
 							break;
 						//next image
 						case SDLK_RIGHT: //move forward
@@ -462,7 +485,7 @@ int main(int argc, char* argv[]) {
 								break;
 							}
 							resetViewport(); //new image so reset zoom and positioning
-							draw(&win, (IVG::SETTINGS.DISPLAY_MODE_DARK) ? TEXTURE_DARK.texture : TEXTURE_LIGHT.texture, imageTexture);
+							redraw = true;
 							break;
 					}
 					break;
@@ -476,16 +499,16 @@ int main(int argc, char* argv[]) {
 						IVG::VIEWPORT_X *= IVC::ZOOM_SCROLL_SENSITIVITY;
 						IVG::VIEWPORT_Y *= IVC::ZOOM_SCROLL_SENSITIVITY;
 
-						draw(&win, (IVG::SETTINGS.DISPLAY_MODE_DARK) ? TEXTURE_DARK.texture : TEXTURE_LIGHT.texture, imageTexture);
+						redraw = true;
 					}
 					else if (sdlEvent.wheel.y < 0) {
 						IVG::VIEWPORT_ZOOM = std::max(IVC::ZOOM_MIN, IVG::VIEWPORT_ZOOM / IVC::ZOOM_SCROLL_SENSITIVITY);
 
-						//correct positioning
+						/* Correct positioning. */
 						IVG::VIEWPORT_X /= IVC::ZOOM_SCROLL_SENSITIVITY;
 						IVG::VIEWPORT_Y /= IVC::ZOOM_SCROLL_SENSITIVITY;
 
-						draw(&win, (IVG::SETTINGS.DISPLAY_MODE_DARK) ? TEXTURE_DARK.texture : TEXTURE_LIGHT.texture, imageTexture);
+						redraw = true;
 					}
 					break;
 				case SDL_MOUSEBUTTONDOWN:
@@ -496,7 +519,7 @@ int main(int argc, char* argv[]) {
 							break;
 						case SDL_BUTTON_MIDDLE:
 							resetViewport();
-							draw(&win, (IVG::SETTINGS.DISPLAY_MODE_DARK) ? TEXTURE_DARK.texture : TEXTURE_LIGHT.texture, imageTexture);
+							redraw = true;
 							break;
 						case SDL_BUTTON_X1:
 							//bind mouse back button to left arrow to return to previous image
@@ -532,13 +555,26 @@ int main(int argc, char* argv[]) {
 						SDL_GetMouseState(&mouseX, &mouseY);
 						IVG::VIEWPORT_X += mouseX - mousePreviousX;
 						IVG::VIEWPORT_Y += mouseY - mousePreviousY;
-						draw(&win, (IVG::SETTINGS.DISPLAY_MODE_DARK) ? TEXTURE_DARK.texture : TEXTURE_LIGHT.texture, imageTexture);
+						redraw = true;
 					}
 					break;
-
+				default:
+					break;
 			}
 		}
-		std::this_thread::sleep_for(std::chrono::milliseconds(10));
+
+		// If something happened that requires a redraw, process it
+		if (redraw) {
+			redraw = false;
+			draw(&win, (IVG::SETTINGS.DISPLAY_MODE_DARK) ? &TEXTURE_DARK : &TEXTURE_LIGHT, imageTexture);
+		}
+
+		// Track the amount of time if took to run loop and subtract it from time per frame to match refresh rate
+		time_after = std::chrono::steady_clock::now();
+		execution_time = std::chrono::duration_cast<std::chrono::milliseconds>(time_after - time_before).count();
+		SDL_Delay(std::max(0, baseline_delay - execution_time));
+		time_before = std::chrono::steady_clock::now();
+
 	}
 
 	pushSettings(&win);

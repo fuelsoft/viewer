@@ -11,6 +11,11 @@ NICK WILSON
 TiledTexture::TiledTexture(SDL_Renderer* renderer, int w, int h, uint32_t HIGH, uint32_t LOW) {
 	SDL_Surface* surface = SDL_CreateRGBSurface(0, w, h, 32, 0, 0, 0, 0);
 
+	this->w = w;
+	this->h = h;
+	this->HIGH = HIGH;
+	this->LOW = LOW;
+
 	for (int lh = 0; lh < h; lh++) {
 		for (int lw = 0; lw < w; lw++) {
 			if ((lh < (h/2)) ^ (lw < (w/2))) {
