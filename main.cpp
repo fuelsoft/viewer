@@ -94,10 +94,11 @@ namespace IVG {
 
 	/* SETTINGS */
 	std::filesystem::path PATH_PROGRAM_CWD;
-	std::filesystem::path PATH_FILE_IMAGE;
+	std::filesystem::path PATH_IMAGE_FILE;
 
 	std::vector<std::filesystem::path> FILES_IMAGES_ADJACENT;
-	uint32_t IMAGE_FILE_INDEX = 0;
+	uint32_t INDEX_IMAGE_FILE = 0;
+	int FILETYPE_IMAGE_FILE = 0;
 
 	/* Set settings to default values, to be overwritten if settings file is loaded */
 	struct IVUTIL::IVSETTINGS SETTINGS = IVC::DEFAULTS;
@@ -326,38 +327,50 @@ int main(int argc, char* argv[]) {
 	// Draw background texture before continuing to show program is loading
 	draw(&win, (IVG::SETTINGS.DISPLAY_MODE_DARK) ? &TEXTURE_DARK : &TEXTURE_LIGHT, nullptr);
 
-	// Load up the image passed in
-	if (loadTextureFromFile(std::string(argv[1]), &win, &imageTexture)) {
-		std::cerr << IVUTIL::LOG_ERROR << IMG_GetError() << std::endl;
-		return 1;
-	}
-
 	try {
 		// Determine image filename
-		IVG::PATH_FILE_IMAGE = std::filesystem::canonical(std::filesystem::path(argv[1]));
+		IVG::PATH_IMAGE_FILE = std::filesystem::canonical(std::filesystem::path(argv[1]));
 	} catch (const std::filesystem::filesystem_error& e) {
-		// This happens when there are UTF-8 characters in the path. std::fs bug?
+		// This happens when there are UTF-8 characters in the path.
+		//TODO: Wide strings
 		std::cerr << IVUTIL::LOG_ERROR << e.what() << std::endl;
 		MessageBox(nullptr, "This can be the result of the path containing UTF-8 characters.\n"
 							"Check for invalid or suspect characters in folders or filename.", 
 							"Could not resolve canonical file path!", MB_OK | MB_ICONERROR);
 		return 1;
 	}
+
+	// Determine if file is image type
+	if ((IVG::FILETYPE_IMAGE_FILE = IVUTIL::formatSupport(IVG::PATH_IMAGE_FILE.extension().string())) < 0) {
+		std::cerr << IVUTIL::LOG_ERROR << "Not a supported image format!" << std::endl;
+		MessageBox(nullptr, "Please verify the file has a supported file extension.",
+							"Invalid image format!", MB_OK | MB_ICONERROR);
+		return 1;
+	}
+
+	// Load up the image passed in
+	if (loadTextureFromFile(IVG::PATH_IMAGE_FILE.string(), &win, &imageTexture)) {
+		std::cerr << IVUTIL::LOG_ERROR << IMG_GetError() << std::endl;
+		MessageBox(nullptr, "Please verify the file is not corrupt or misformed.",
+							"Could not load image!", MB_OK | MB_ICONERROR);
+		return 1;
+	}
+
 	// Update window title with image filename
-	win.setTitle((IVG::PATH_FILE_IMAGE.filename().string() + " - " + IVUTIL::APPLICATION_TITLE).c_str());
+	win.setTitle((IVG::PATH_IMAGE_FILE.filename().string() + " - " + IVUTIL::APPLICATION_TITLE).c_str());
 
 	// Finally draw image and background
 	draw(&win, (IVG::SETTINGS.DISPLAY_MODE_DARK) ? &TEXTURE_DARK : &TEXTURE_LIGHT, imageTexture);
 
 	// Iterate image folder and mark position of currently open image
 	int pos = 0;
-	for(auto& entry : std::filesystem::directory_iterator(IVG::PATH_FILE_IMAGE.parent_path())) {
+	for(auto& entry : std::filesystem::directory_iterator(IVG::PATH_IMAGE_FILE.parent_path())) {
 		// Test that file is real file not link, folder, etc. and check it is a supported image format
 		if (std::filesystem::is_regular_file(entry) && (IVUTIL::formatSupport(entry.path().extension().string()) >= 0)) {
 			// Add file to list of images
 			IVG::FILES_IMAGES_ADJACENT.push_back(entry.path());
 			// If this is the image currently open, record position
-			if (entry.path() == IVG::PATH_FILE_IMAGE) IVG::IMAGE_FILE_INDEX = pos;
+			if (entry.path() == IVG::PATH_IMAGE_FILE) IVG::INDEX_IMAGE_FILE = pos;
 			pos++;
 		}
 	}
@@ -444,17 +457,17 @@ int main(int argc, char* argv[]) {
 						case SDLK_DELETE: //delete image
 							if (IDYES == MessageBox(nullptr, "Are you sure you want to permanently delete this image?\nThis action cannot be reversed!", "Delete Image", MB_YESNO | MB_DEFBUTTON2 | MB_ICONEXCLAMATION)) {
 								try { //success
-									std::filesystem::remove(IVG::FILES_IMAGES_ADJACENT[IVG::IMAGE_FILE_INDEX]);
-									std::cout << IVUTIL::LOG_NOTICE << "File deleted: " << IVG::FILES_IMAGES_ADJACENT[IVG::IMAGE_FILE_INDEX].string() << std::endl;
+									std::filesystem::remove(IVG::FILES_IMAGES_ADJACENT[IVG::INDEX_IMAGE_FILE]);
+									std::cout << IVUTIL::LOG_NOTICE << "File deleted: " << IVG::FILES_IMAGES_ADJACENT[IVG::INDEX_IMAGE_FILE].string() << std::endl;
 								}
 								catch (const std::filesystem::filesystem_error& e) { //failure
-									std::cerr << IVUTIL::LOG_WARNING << "File could not be deleted: " << IVG::FILES_IMAGES_ADJACENT[IVG::IMAGE_FILE_INDEX].string() << std::endl;
+									std::cerr << IVUTIL::LOG_WARNING << "File could not be deleted: " << IVG::FILES_IMAGES_ADJACENT[IVG::INDEX_IMAGE_FILE].string() << std::endl;
 									std::cerr << IVUTIL::LOG_WARNING << e.what() << std::endl;
 									MessageBox(nullptr, "Image could not be deleted.", "Image Deletion Failure", MB_OK | MB_ICONERROR);
 									break;
 								}
-								IVG::FILES_IMAGES_ADJACENT.erase(IVG::FILES_IMAGES_ADJACENT.begin() + IVG::IMAGE_FILE_INDEX);
-								IVG::IMAGE_FILE_INDEX--;
+								IVG::FILES_IMAGES_ADJACENT.erase(IVG::FILES_IMAGES_ADJACENT.begin() + IVG::INDEX_IMAGE_FILE);
+								IVG::INDEX_IMAGE_FILE--;
 								SDL_Event sdlENext;
 								sdlENext.type = SDL_KEYDOWN;
 								sdlENext.key.keysym.sym = SDLK_RIGHT;
@@ -464,10 +477,10 @@ int main(int argc, char* argv[]) {
 						//previous image
 						case SDLK_LEFT: //move back
 							if (IVG::FILES_IMAGES_ADJACENT.size() == 1) break; //there's only one image in the folder so don't move
-							if (IVG::IMAGE_FILE_INDEX == 0) IVG::IMAGE_FILE_INDEX = IVG::FILES_IMAGES_ADJACENT.size() - 1; //loop back to end of image file list
-							else IVG::IMAGE_FILE_INDEX--;
-							win.setTitle((IVG::FILES_IMAGES_ADJACENT[IVG::IMAGE_FILE_INDEX].filename().string() + " - " + IVUTIL::APPLICATION_TITLE).c_str()); //update window title
-							if (loadTextureFromFile(std::filesystem::canonical(IVG::FILES_IMAGES_ADJACENT[IVG::IMAGE_FILE_INDEX]).string(), &win, &imageTexture)) { //if call returned non-zero, there was an error
+							if (IVG::INDEX_IMAGE_FILE == 0) IVG::INDEX_IMAGE_FILE = IVG::FILES_IMAGES_ADJACENT.size() - 1; //loop back to end of image file list
+							else IVG::INDEX_IMAGE_FILE--;
+							win.setTitle((IVG::FILES_IMAGES_ADJACENT[IVG::INDEX_IMAGE_FILE].filename().string() + " - " + IVUTIL::APPLICATION_TITLE).c_str()); //update window title
+							if (loadTextureFromFile(std::filesystem::canonical(IVG::FILES_IMAGES_ADJACENT[IVG::INDEX_IMAGE_FILE]).string(), &win, &imageTexture)) { //if call returned non-zero, there was an error
 								std::cerr << IVUTIL::LOG_ERROR << IMG_GetError() << std::endl;
 								break;
 							}
@@ -477,10 +490,10 @@ int main(int argc, char* argv[]) {
 						//next image
 						case SDLK_RIGHT: //move forward
 							if (IVG::FILES_IMAGES_ADJACENT.size() == 1) break; //there's only one image in the folder so don't move
-							IVG::IMAGE_FILE_INDEX++;
-							if (IVG::IMAGE_FILE_INDEX >= IVG::FILES_IMAGES_ADJACENT.size()) IVG::IMAGE_FILE_INDEX = 0; //loop back to start of image file list
-							win.setTitle((IVG::FILES_IMAGES_ADJACENT[IVG::IMAGE_FILE_INDEX].filename().string() + " - " + IVUTIL::APPLICATION_TITLE).c_str()); //update window title
-							if (loadTextureFromFile(std::filesystem::canonical(IVG::FILES_IMAGES_ADJACENT[IVG::IMAGE_FILE_INDEX]).string(), &win, &imageTexture)) { //if call returned non-zero, there was an error
+							IVG::INDEX_IMAGE_FILE++;
+							if (IVG::INDEX_IMAGE_FILE >= IVG::FILES_IMAGES_ADJACENT.size()) IVG::INDEX_IMAGE_FILE = 0; //loop back to start of image file list
+							win.setTitle((IVG::FILES_IMAGES_ADJACENT[IVG::INDEX_IMAGE_FILE].filename().string() + " - " + IVUTIL::APPLICATION_TITLE).c_str()); //update window title
+							if (loadTextureFromFile(std::filesystem::canonical(IVG::FILES_IMAGES_ADJACENT[IVG::INDEX_IMAGE_FILE]).string(), &win, &imageTexture)) { //if call returned non-zero, there was an error
 								std::cerr << IVUTIL::LOG_ERROR << IMG_GetError() << std::endl;
 								break;
 							}
