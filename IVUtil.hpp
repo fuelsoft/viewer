@@ -34,6 +34,12 @@ namespace IVUTIL {
 		TGA
 	};
 
+	/* Home cooked exception codes */
+	enum IVEXCEPT {
+		EXCEPT_IMG_LOAD_FAIL,
+		EXCEPT_IMG_OPEN_FAIL,
+	};
+
 	// This the data read from and written to settings file.
 	// Adding a new value here will cause old config files to be discarded on first read.
 	struct IVSETTINGS {

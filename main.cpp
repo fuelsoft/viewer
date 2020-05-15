@@ -9,9 +9,13 @@ NICK WILSON
 #include <SDL2/SDL.h>
 #include <SDL2/SDL_image.h>
 
-#include "Window.hpp"
-#include "TiledTexture.hpp"
 #include "IVUtil.hpp"
+#include "subclasses/Window.hpp"
+#include "subclasses/TiledTexture.hpp"
+
+#include "subclasses/IVImage.hpp"
+#include "subclasses/IVStaticImage.hpp"
+#include "subclasses/IVAnimatedImage.hpp"
 
 #include <string>
 #include <iostream>
@@ -21,6 +25,7 @@ NICK WILSON
 #include <fstream>
 #include <filesystem>
 #include <vector>
+#include <memory>
 
 #ifndef WIN32_LEAN_AND_MEAN
 	#define WIN32_LEAN_AND_MEAN
@@ -79,9 +84,6 @@ namespace IVG {
 	bool WIN_MOVED = false;
 
 	/* DISPLAY */
-	int IMAGE_W = 0;
-	int IMAGE_H = 0;
-
 	int VIEWPORT_X = 0;
 	int VIEWPORT_Y = 0;
 	float VIEWPORT_ZOOM = 1.0f;
@@ -98,10 +100,11 @@ namespace IVG {
 
 	std::vector<std::filesystem::path> FILES_IMAGES_ADJACENT;
 	uint32_t INDEX_IMAGE_FILE = 0;
-	int FILETYPE_IMAGE_FILE = 0;
 
 	/* Set settings to default values, to be overwritten if settings file is loaded */
 	struct IVUTIL::IVSETTINGS SETTINGS = IVC::DEFAULTS;
+
+	std::unique_ptr<IVImage> IMAGE_CURRENT;
 }
 
 /* /// CODE /// */
@@ -133,17 +136,17 @@ void pushSettings(Window* win) {
 void redrawImage(Window* win, SDL_Texture* imageTexture) {
 
 	//image is too big for the window
-	if (IVG::IMAGE_H > win->h || IVG::IMAGE_W > win->w) {
+	if (IVG::IMAGE_CURRENT->h > win->h || IVG::IMAGE_CURRENT->w > win->w) {
 		//determine the shapes of window and image
-		float imageAspectRatio = IVG::IMAGE_W/(float) IVG::IMAGE_H;
+		float imageAspectRatio = IVG::IMAGE_CURRENT->w/(float) IVG::IMAGE_CURRENT->h;
 		float windowAspectRatio = win->w/(float) win->h;
 
 		//width is priority
 		if (imageAspectRatio > windowAspectRatio) {
 			//figure out how image will be scaled to fit
-			float imageReduction = win->w/(float) IVG::IMAGE_W;
+			float imageReduction = win->w/(float) IVG::IMAGE_CURRENT->w;
 			//apply transformation to height
-			int imageTargetHeight = imageReduction * IVG::IMAGE_H;
+			int imageTargetHeight = imageReduction * IVG::IMAGE_CURRENT->h;
 
 			//horizontal adjustment
 			int xPos = (win->w - win->w * IVG::VIEWPORT_ZOOM)/2 + IVG::VIEWPORT_X;
@@ -156,9 +159,9 @@ void redrawImage(Window* win, SDL_Texture* imageTexture) {
 		//height is priority or equal priority
 		else {
 			//figure out how image will be scaled to fit
-			float imageReduction = win->h/(float) IVG::IMAGE_H;
+			float imageReduction = win->h/(float) IVG::IMAGE_CURRENT->h;
 			//apply transformation to width
-			int imageTargetWidth = imageReduction * IVG::IMAGE_W;
+			int imageTargetWidth = imageReduction * IVG::IMAGE_CURRENT->w;
 
 			//horizontal adjustment
 			int xPos = (win->w - imageTargetWidth * IVG::VIEWPORT_ZOOM)/2 + IVG::VIEWPORT_X;
@@ -171,9 +174,9 @@ void redrawImage(Window* win, SDL_Texture* imageTexture) {
 	}
 	//image will fit in existing window
 	else {
-		int xPos = (win->w - IVG::IMAGE_W * IVG::VIEWPORT_ZOOM)/2 + IVG::VIEWPORT_X;
-		int yPos = (win->h - IVG::IMAGE_H * IVG::VIEWPORT_ZOOM)/2 + IVG::VIEWPORT_Y;
-		SDL_Rect windowDestination = {xPos, yPos, (int) (IVG::IMAGE_W * IVG::VIEWPORT_ZOOM), (int) (IVG::IMAGE_H * IVG::VIEWPORT_ZOOM)};
+		int xPos = (win->w - IVG::IMAGE_CURRENT->w * IVG::VIEWPORT_ZOOM)/2 + IVG::VIEWPORT_X;
+		int yPos = (win->h - IVG::IMAGE_CURRENT->h * IVG::VIEWPORT_ZOOM)/2 + IVG::VIEWPORT_Y;
+		SDL_Rect windowDestination = {xPos, yPos, (int) (IVG::IMAGE_CURRENT->w * IVG::VIEWPORT_ZOOM), (int) (IVG::IMAGE_CURRENT->h * IVG::VIEWPORT_ZOOM)};
 		SDL_RenderCopy(win->renderer, imageTexture, 0, &windowDestination);
 	}
 }
@@ -194,30 +197,37 @@ void drawTileTexture(Window* win, TiledTexture* tiledTexture) {
 
 /**
 * loadTextureFromFile	- Load a file and convert it to an SDL_Texture
+* renderer 				> Target SDL_Renderer
 * filePath 				> The path to the image to load
-* win					> Target Window object
-* imageTexture 			> Image as SDL_Texture
+* return - int 			< 0 on success or 1 on failure
 */
-int loadTextureFromFile(std::string filePath, Window* win, SDL_Texture** imageTexture) {
+int loadTextureFromFile(SDL_Renderer* renderer, std::filesystem::path filePath) {
 	//try loading image from filename
-	SDL_Surface* imageSurface = IMG_Load(filePath.c_str());
-
-	//image load call returned null, indicating failure
-	if (!imageSurface) {
-		std::cerr << IVUTIL::LOG_ERROR << IMG_GetError() << std::endl;
+	int filetype = IVUTIL::formatSupport(filePath.extension().string());
+	try {
+		if (filetype == IVUTIL::GIF) {
+			//load animated image
+			IVG::IMAGE_CURRENT.reset(new IVAnimatedImage(renderer, filePath));
+		}
+		else {
+			//load static image
+			IVG::IMAGE_CURRENT.reset(new IVStaticImage(renderer, filePath));
+		}
+	}
+	catch (int except) {
+		switch (except) {
+			case IVUTIL::EXCEPT_IMG_OPEN_FAIL:
+				std::cerr << IVUTIL::LOG_WARNING << "Failed to open image \'" << filePath << "\'" << std::endl;
+				break;
+			case IVUTIL::EXCEPT_IMG_LOAD_FAIL:
+				std::cerr << IVUTIL::LOG_WARNING << "Failed to load image \'" << filePath << "\'" << std::endl;
+				break;
+			default:
+				std::cerr << IVUTIL::LOG_WARNING << "Unknown error loading image \'" << filePath << "\'" << std::endl;
+				break;
+		}
 		return 1;
 	}
-
-	IVG::IMAGE_H = imageSurface->h;
-	IVG::IMAGE_W = imageSurface->w;
-
-	//clear old texture
-	SDL_DestroyTexture(*imageTexture);
-
-	//create hardware accelerated texture from image data and free surface
-	*imageTexture = SDL_CreateTextureFromSurface(win->renderer, imageSurface);
-
-	SDL_FreeSurface(imageSurface);
 	return 0;
 }
 
@@ -288,7 +298,7 @@ int main(int argc, char* argv[]) {
 
 	SDL_DisplayMode displayMode;
 	SDL_Event sdlEvent;
-	SDL_Texture* imageTexture = nullptr;
+	// SDL_Texture* imageTexture = nullptr;
 
 	char EXE_PATH[MAX_PATH];
 	GetModuleFileNameA(NULL, EXE_PATH, MAX_PATH); //Windows system call to get executable's path
@@ -341,7 +351,7 @@ int main(int argc, char* argv[]) {
 	}
 
 	// Determine if file is image type
-	if ((IVG::FILETYPE_IMAGE_FILE = IVUTIL::formatSupport(IVG::PATH_IMAGE_FILE.extension().string())) < 0) {
+	if (IVUTIL::formatSupport(IVG::PATH_IMAGE_FILE.extension().string()) < 0) {
 		std::cerr << IVUTIL::LOG_ERROR << "Not a supported image format!" << std::endl;
 		MessageBox(nullptr, "Please verify the file has a supported file extension.",
 							"Invalid image format!", MB_OK | MB_ICONERROR);
@@ -349,7 +359,7 @@ int main(int argc, char* argv[]) {
 	}
 
 	// Load up the image passed in
-	if (loadTextureFromFile(IVG::PATH_IMAGE_FILE.string(), &win, &imageTexture)) {
+	if (loadTextureFromFile(win.renderer, IVG::PATH_IMAGE_FILE)) {
 		std::cerr << IVUTIL::LOG_ERROR << IMG_GetError() << std::endl;
 		MessageBox(nullptr, "Please verify the file is not corrupt or misformed.",
 							"Could not load image!", MB_OK | MB_ICONERROR);
@@ -360,7 +370,7 @@ int main(int argc, char* argv[]) {
 	win.setTitle((IVG::PATH_IMAGE_FILE.filename().string() + " - " + IVUTIL::APPLICATION_TITLE).c_str());
 
 	// Finally draw image and background
-	draw(&win, (IVG::SETTINGS.DISPLAY_MODE_DARK) ? &TEXTURE_DARK : &TEXTURE_LIGHT, imageTexture);
+	draw(&win, (IVG::SETTINGS.DISPLAY_MODE_DARK) ? &TEXTURE_DARK : &TEXTURE_LIGHT, IVG::IMAGE_CURRENT->texture);
 
 	// Iterate image folder and mark position of currently open image
 	int pos = 0;
@@ -480,7 +490,7 @@ int main(int argc, char* argv[]) {
 							if (IVG::INDEX_IMAGE_FILE == 0) IVG::INDEX_IMAGE_FILE = IVG::FILES_IMAGES_ADJACENT.size() - 1; //loop back to end of image file list
 							else IVG::INDEX_IMAGE_FILE--;
 							win.setTitle((IVG::FILES_IMAGES_ADJACENT[IVG::INDEX_IMAGE_FILE].filename().string() + " - " + IVUTIL::APPLICATION_TITLE).c_str()); //update window title
-							if (loadTextureFromFile(std::filesystem::canonical(IVG::FILES_IMAGES_ADJACENT[IVG::INDEX_IMAGE_FILE]).string(), &win, &imageTexture)) { //if call returned non-zero, there was an error
+							if (loadTextureFromFile(win.renderer, std::filesystem::canonical(IVG::FILES_IMAGES_ADJACENT[IVG::INDEX_IMAGE_FILE]))) { //if call returned non-zero, there was an error
 								std::cerr << IVUTIL::LOG_ERROR << IMG_GetError() << std::endl;
 								break;
 							}
@@ -493,7 +503,7 @@ int main(int argc, char* argv[]) {
 							IVG::INDEX_IMAGE_FILE++;
 							if (IVG::INDEX_IMAGE_FILE >= IVG::FILES_IMAGES_ADJACENT.size()) IVG::INDEX_IMAGE_FILE = 0; //loop back to start of image file list
 							win.setTitle((IVG::FILES_IMAGES_ADJACENT[IVG::INDEX_IMAGE_FILE].filename().string() + " - " + IVUTIL::APPLICATION_TITLE).c_str()); //update window title
-							if (loadTextureFromFile(std::filesystem::canonical(IVG::FILES_IMAGES_ADJACENT[IVG::INDEX_IMAGE_FILE]).string(), &win, &imageTexture)) { //if call returned non-zero, there was an error
+							if (loadTextureFromFile(win.renderer, std::filesystem::canonical(IVG::FILES_IMAGES_ADJACENT[IVG::INDEX_IMAGE_FILE]))) { //if call returned non-zero, there was an error
 								std::cerr << IVUTIL::LOG_ERROR << IMG_GetError() << std::endl;
 								break;
 							}
@@ -579,7 +589,7 @@ int main(int argc, char* argv[]) {
 		// If something happened that requires a redraw, process it
 		if (redraw) {
 			redraw = false;
-			draw(&win, (IVG::SETTINGS.DISPLAY_MODE_DARK) ? &TEXTURE_DARK : &TEXTURE_LIGHT, imageTexture);
+			draw(&win, (IVG::SETTINGS.DISPLAY_MODE_DARK) ? &TEXTURE_DARK : &TEXTURE_LIGHT, IVG::IMAGE_CURRENT->texture);
 		}
 
 		// Track the amount of time if took to run loop and subtract it from time per frame to match refresh rate
