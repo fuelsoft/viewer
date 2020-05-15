@@ -34,8 +34,7 @@ This project depends on:
 * [SDL_image](https://www.libsdl.org/projects/SDL_image/)
 * C++17 for std::filesystem (you'll need mingw64 from MSYS2 for this)
 * Windows for system calls. This would be a pain to port.
-
-That's it. So far.
+* [giflib](http://giflib.sourceforge.net/) (or *libgif*, they can't decide).
 
 ## Building:
 Run `make <type>` in the Viewer folder where type is either `Debug` or `Release` (defaults to `Release`).
@@ -44,6 +43,7 @@ Run `make <type>` in the Viewer folder where type is either `Debug` or `Release`
 * You will need to modify the makefile at the marked lines to point to your mingw64 install (for `g++` and `windres`).
 * You will also need to point to the library include and lib folders - myself, I combined my SDL2 and SDL_image files to simplify this.
 * These are mostly just the build commands as CodeBlocks runs them - they may not always be up to date enough to build the project without modification.
+* My copy of giflib was installed via MSYS2 and resides in `C:\msys64\mingw64\`. You may have to tweak this in the Makefile to match where your copy is installed.
 
 ## Usage:
 First, ensure that the executable has all the `.dll` files next to it. There are two groups you need:
@@ -91,7 +91,7 @@ As listed [here](https://www.libsdl.org/projects/SDL_image/docs/SDL_image.pdf#pa
 ### TODO:
 * Add key to set zoom to 1:1 pixel ratio
 * Partial image metadata? PNG image data support from ProjectPNG?
-* Animated GIFs
+* Animated GIFs (WIP)
 * Zoom on mouse instead of window center
 * Stop image from being moved off-screen
 
@@ -101,6 +101,6 @@ As listed [here](https://www.libsdl.org/projects/SDL_image/docs/SDL_image.pdf#pa
 * GIF: Animated sequences only load the first frame
 * ALL: Images loaded from RO-type media (cell phones, cameras) are copied to a temp folder by Windows before being loaded. 
 This breaks in-folder navigation. It's unclear to me how WPV works around this.
-* ALL: Images with UTF-8 characters anywhere in the path break canonical path creation - not sure what I can do about that.
+* ALL: Images with UTF-8 characters anywhere in the path are broken - this is because of the conversion from wchar string to char string done to accomodate SDL_Image. I can't find anything online about how to work around this.
 
 [1]: https://www.libsdl.org/projects/SDL_image/docs/SDL_image.pdf#page=21&zoom=auto,-205,720
