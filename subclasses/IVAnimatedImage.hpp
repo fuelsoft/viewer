@@ -15,6 +15,8 @@ NICK WILSON
 class IVAnimatedImage : public IVImage{
 private:
 	GifFileType* gif_data;
+	int frame_index = 0;
+	int depth = 0;
 
 	void setPalette(ColorMapObject* colorMap, SDL_Surface* surface);
 
@@ -27,6 +29,10 @@ public:
 	IVAnimatedImage(SDL_Renderer* renderer, std::filesystem::path path);
 
 	~IVAnimatedImage();
+
+	void printDetails();
+
+	int next();
 };
 
 #endif

@@ -26,9 +26,12 @@ IVStaticImage::IVStaticImage(SDL_Renderer* renderer, std::filesystem::path path)
 }
 
 IVStaticImage::~IVStaticImage() {
-	SDL_DestroyTexture(texture);
+	SDL_DestroyTexture(this->texture);
 }
 
+void IVStaticImage::printDetails() {
+	std::cout << this->w << " x " << this->h << std::endl;
+}
 
 /*
 TODO: File type check

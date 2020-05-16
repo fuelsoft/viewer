@@ -24,6 +24,10 @@ public:
 	uint16_t w, h;
 	bool animated;
 	SDL_Texture* texture = nullptr;
+
+	virtual void printDetails() {}
+
+	virtual int next() { return 0; }
 };
 
 #endif

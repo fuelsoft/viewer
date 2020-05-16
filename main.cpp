@@ -214,7 +214,7 @@ int loadTextureFromFile(SDL_Renderer* renderer, std::filesystem::path filePath) 
 			IVG::IMAGE_CURRENT.reset(new IVStaticImage(renderer, filePath));
 		}
 	}
-	catch (int except) {
+	catch (IVUTIL::IVEXCEPT except) {
 		switch (except) {
 			case IVUTIL::EXCEPT_IMG_OPEN_FAIL:
 				std::cerr << IVUTIL::LOG_WARNING << "Failed to open image \'" << filePath << "\'" << std::endl;
@@ -439,6 +439,10 @@ int main(int argc, char* argv[]) {
 					break;
 				case SDL_KEYDOWN:
 					switch (sdlEvent.key.keysym.sym) {
+						case SDLK_t:
+							IVG::IMAGE_CURRENT->next();
+							redraw = true;
+							break;
 						case SDLK_EQUALS:  //equals with plus secondary
 						case SDLK_KP_PLUS: //or keypad plus, zoom in
 							IVG::VIEWPORT_ZOOM = std::min(IVC::ZOOM_MAX, IVG::VIEWPORT_ZOOM * 2.0f);
