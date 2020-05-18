@@ -45,7 +45,7 @@ namespace IVC {
 	const std::string BUILD_DATE = __DATE__;
 	const std::string BUILD_TIME = __TIME__;
 	std::string VERSION_ABOUT;
-	const std::string IVVERSION = "0.2.3";
+	const std::string IVVERSION = "0.3.0";
 
 	/* WINDOW MANAGEMENT */
 	const int WIN_DEFAULT_W = 1600;
@@ -209,9 +209,12 @@ int loadTextureFromFile(SDL_Renderer* renderer, std::filesystem::path filePath) 
 			//load animated image
 			IVG::IMAGE_CURRENT.reset(new IVAnimatedImage(renderer, filePath));
 		}
-		else {
+		else if (filetype > -1) {
 			//load static image
 			IVG::IMAGE_CURRENT.reset(new IVStaticImage(renderer, filePath));
+		}
+		else {
+			return 1;
 		}
 	}
 	catch (IVUTIL::IVEXCEPT except) {
@@ -298,7 +301,6 @@ int main(int argc, char* argv[]) {
 
 	SDL_DisplayMode displayMode;
 	SDL_Event sdlEvent;
-	// SDL_Texture* imageTexture = nullptr;
 
 	char EXE_PATH[MAX_PATH];
 	GetModuleFileNameA(NULL, EXE_PATH, MAX_PATH); //Windows system call to get executable's path
@@ -439,9 +441,8 @@ int main(int argc, char* argv[]) {
 					break;
 				case SDL_KEYDOWN:
 					switch (sdlEvent.key.keysym.sym) {
-						case SDLK_t:
-							IVG::IMAGE_CURRENT->next();
-							redraw = true;
+						case SDLK_SPACE:	//if gif, toggle pause/play
+							if (IVG::IMAGE_CURRENT->animated) IVG::IMAGE_CURRENT->set_status(IVImage::STATE_TOGGLE);
 							break;
 						case SDLK_EQUALS:  //equals with plus secondary
 						case SDLK_KP_PLUS: //or keypad plus, zoom in
@@ -588,6 +589,11 @@ int main(int argc, char* argv[]) {
 				default:
 					break;
 			}
+		}
+
+		if (IVG::IMAGE_CURRENT->animated && IVG::IMAGE_CURRENT->ready) {
+			IVG::IMAGE_CURRENT->prepare();
+			redraw = true;
 		}
 
 		// If something happened that requires a redraw, process it

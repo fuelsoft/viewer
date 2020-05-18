@@ -29,10 +29,6 @@ IVStaticImage::~IVStaticImage() {
 	SDL_DestroyTexture(this->texture);
 }
 
-void IVStaticImage::printDetails() {
-	std::cout << this->w << " x " << this->h << std::endl;
-}
-
 /*
 TODO: File type check
 */

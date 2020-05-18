@@ -19,8 +19,6 @@ public:
 	IVStaticImage(SDL_Renderer* renderer, std::filesystem::path path);
 
 	~IVStaticImage();
-
-	void printDetails();
 };
 
 #endif

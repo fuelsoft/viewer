@@ -1,6 +1,6 @@
 1 VERSIONINFO
-FILEVERSION     0,2,3,0
-PRODUCTVERSION  0,2,3,0
+FILEVERSION     0,3,0,0
+PRODUCTVERSION  0,3,0,0
 BEGIN
   BLOCK "StringFileInfo"
   BEGIN
@@ -8,12 +8,12 @@ BEGIN
     BEGIN
       VALUE "CompanyName", "Fuelsoft Development"
       VALUE "FileDescription", "Image Viewer"
-      VALUE "FileVersion", "0.2.3"
+      VALUE "FileVersion", "0.3.0"
       VALUE "InternalName", "viewer"
       VALUE "LegalCopyright", "Fuelsoft Development"
       VALUE "OriginalFilename", "Viewer.exe"
       VALUE "ProductName", "Image Viewer"
-      VALUE "ProductVersion", "0.2.3"
+      VALUE "ProductVersion", "0.3.0"
     END
   END
   BLOCK "VarFileInfo"

@@ -21,13 +21,22 @@ protected:
 	SDL_Renderer* renderer = nullptr;
 
 public:
+	enum state {
+		STATE_PLAY,
+		STATE_PAUSE,
+		STATE_TOGGLE,
+	};
+
 	uint16_t w, h;
-	bool animated;
+	bool animated = false;
+	bool ready = false;
 	SDL_Texture* texture = nullptr;
 
-	virtual void printDetails() {}
+	virtual void prepare() {};
 
-	virtual int next() { return 0; }
+	virtual void set_status(state s) {};
+
+	virtual ~IVImage() {};
 };
 
 #endif

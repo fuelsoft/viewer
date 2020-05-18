@@ -4,6 +4,8 @@ NICK WILSON
 2020
 */
 
+#include <thread>
+
 #include "IVUtil.hpp"	//utilities
 #include "IVImage.hpp"	//base class
 
@@ -15,13 +17,29 @@ NICK WILSON
 class IVAnimatedImage : public IVImage{
 private:
 	GifFileType* gif_data;
-	int frame_index = 0;
-	int depth = 0;
+	uint8_t depth = 0;
+	uint16_t frame_index = 0;
+	uint16_t delay_val = 0;
+
+	bool play = true;
+	bool quit = false;
+
+	std::thread animationThread;
 
 	void setPalette(ColorMapObject* colorMap, SDL_Surface* surface);
 
+	void setIndex(uint16_t index);
+
+	void next();
+
+	uint16_t getDelay(uint16_t index);
+
+	uint16_t getDelay();
+
+	void animate();
+
 public:
-	int frame_count = 0;
+	uint16_t frame_count = 0;
 	bool playable;
 
 	IVAnimatedImage() {}
@@ -30,9 +48,9 @@ public:
 
 	~IVAnimatedImage();
 
-	void printDetails();
+	void prepare();
 
-	int next();
+	void set_status(IVImage::state s);
 };
 
 #endif
