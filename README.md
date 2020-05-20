@@ -7,6 +7,7 @@ I got so tired of Windows Photo Viewer misbehaving that I decided to write a clo
 Things WPV does that drove me to insanity:
 * No support for animated GIFs.
     * I had to resort to opening GIFs in Internet Explorer, truly a cursed experience.
+    * As of version 0.3.X, animated GIFs are nearly fully supported.
 * "Windows Photo Viewer can't display this picture because there might not be enough memory available on your computer"
     * Let me assure you, this is not correct.
     * Afflicted photos open correctly in Photoshop, web browsers, etc. It's just WPV that has a problem.
@@ -77,6 +78,7 @@ You can also set Viewer as the default program for some image formats if you wan
 |<\-|LEFT ARROW|Previous image|-|
 |\->|RIGHT ARROW|Next image|-|
 |\|<\->\||TAB|Toggle light theme|-|
+|␣|SPACEBAR|Play/Pause animation|Only applicable to animated images.|
 |DEL|DELETE|Delete image|**Permanent!** This will **not** go to Recycle Bin!|
 |F1|F1|View version info|Probably not useful to you if you're reading this.|
 
@@ -91,16 +93,14 @@ As listed [here](https://www.libsdl.org/projects/SDL_image/docs/SDL_image.pdf#pa
 ### TODO:
 * Add key to set zoom to 1:1 pixel ratio
 * Partial image metadata? PNG image data support from ProjectPNG?
-* Animated GIFs (WIP)
 * Zoom on mouse instead of window center
 * Stop image from being moved off-screen
 
 ### Known Problems:
 * ICO: Files stored as "NEW PNG" type do not load with SDL_image
 * ICO: Files with partially transparent pixels do not render correctly
-* GIF: Animated sequences only load the first frame
 * ALL: Images loaded from RO-type media (cell phones, cameras) are copied to a temp folder by Windows before being loaded. 
 This breaks in-folder navigation. It's unclear to me how WPV works around this.
-* ALL: Images with UTF-8 characters anywhere in the path are broken - this is because of the conversion from wchar string to char string done to accomodate SDL_Image. I can't find anything online about how to work around this.
+* ALL: Images with UTF-8 characters anywhere in the path are broken - this is because of the conversion from wchar string to char string done to accommodate SDL_Image. I can't find anything online about how to work around this.
 
 [1]: https://www.libsdl.org/projects/SDL_image/docs/SDL_image.pdf#page=21&zoom=auto,-205,720
