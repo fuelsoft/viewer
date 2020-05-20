@@ -43,13 +43,10 @@ void IVAnimatedImage::setIndex(uint16_t index) {
 */
 uint16_t IVAnimatedImage::getDelay(uint16_t index) {
 	index %= frame_count;
-	// iterate and look for graphics extension with timing data
-	for (int i = 0; i < gif_data->SavedImages[index].ExtensionBlockCount; i++) {
-		if (gif_data->SavedImages[index].ExtensionBlocks[i].Function == GRAPHICS_EXT_FUNC_CODE) { // found it
-			this->delay_val = (uint16_t) (gif_data->SavedImages[index].ExtensionBlocks[i].Bytes[1]); // see [1]
-			break;
-		}
-	}
+	//call search for graphics block
+	ExtensionBlock* gfx = getGraphicsBlock(index);
+	//if one was found, update delay
+	if (gfx) this->delay_val = (uint16_t) (gfx->Bytes[1]); // see [1]
 	return this->delay_val;
 }
 
@@ -58,6 +55,20 @@ uint16_t IVAnimatedImage::getDelay(uint16_t index) {
 */
 uint16_t IVAnimatedImage::getDelay() {
 	return getDelay(frame_index);
+}
+
+/**
+* getGraphicsBlock 	- Locate and return the Extension Block of type Graphics Control for provided index
+* index 			> Target frame index
+*/
+ExtensionBlock* IVAnimatedImage::getGraphicsBlock(uint16_t index) {
+	// iterate and look for graphics extension with timing data
+	for (int i = 0; i < gif_data->SavedImages[index].ExtensionBlockCount; i++) {
+		if (gif_data->SavedImages[index].ExtensionBlocks[i].Function == GRAPHICS_EXT_FUNC_CODE) { // found it
+			return &gif_data->SavedImages[index].ExtensionBlocks[i];
+		}
+	}
+	return nullptr;
 }
 
 /**
@@ -122,9 +133,14 @@ IVAnimatedImage::IVAnimatedImage(SDL_Renderer* renderer, std::filesystem::path p
 		setPalette(gif_data->SavedImages[this->frame_index].ImageDesc.ColorMap, this->surface);
 	}
 
-	this->texture = SDL_CreateTextureFromSurface(this->renderer, this->surface);
+	/* Convert to a more friendly format */
+	SDL_PixelFormat *format = SDL_AllocFormat(SDL_PIXELFORMAT_RGB888);
+	SDL_Surface *output = SDL_ConvertSurface(surface, format, 0);
+	SDL_FreeFormat(format);
+	SDL_FreeSurface(surface);
+	surface = output;
 
-	// SDL_FreeSurface(surface);
+	this->texture = SDL_CreateTextureFromSurface(this->renderer, this->surface);
 
 	if (this->animated) animationThread = std::thread(&IVAnimatedImage::animate, this);
 }
@@ -140,18 +156,20 @@ IVAnimatedImage::~IVAnimatedImage() {
 }
 
 /**
-* prepare - Create surface from current index, apply palette and create texture.
+* prepare - Create surface from current index, apply palette and create texture, keying as required.
 *			This should be called as infrequently as possible - static images don't need refreshing.
 */
 void IVAnimatedImage::prepare() {
 	int local_index = frame_index;
 
+	// shortened for simplicity
 	GifImageDesc* im_desc = &this->gif_data->SavedImages[local_index].ImageDesc;
 
+	// destination for copy - if only a region is being updated, this will not cover the whole image
 	SDL_Rect dest;
-	dest.x = im_desc->Left; 
-	dest.y = im_desc->Top; 
-	dest.w = im_desc->Width; 
+	dest.x = im_desc->Left;
+	dest.y = im_desc->Top;
+	dest.w = im_desc->Width;
 	dest.h = im_desc->Height;
 
 	SDL_Surface* temp = SDL_CreateRGBSurfaceFrom((void *) this->gif_data->SavedImages[local_index].RasterBits, im_desc->Width, im_desc->Height, this->depth, im_desc->Width * (this->depth >> 3), 0, 0, 0, 0);
@@ -165,6 +183,20 @@ void IVAnimatedImage::prepare() {
 		setPalette(gif_data->SavedImages[local_index].ImageDesc.ColorMap, temp);
 	}
 
+	//get gfx extension block to find transparent palette index
+	ExtensionBlock* gfx = getGraphicsBlock(local_index);
+
+	//if gfx block exists and transparency flag is set, set colour key
+	if (gfx && (gfx->Bytes[0] & 0x01)) {
+		// get a pointer to the referenced target palette index for keying
+		uint8_t* gif_plt = ((uint8_t*) (gif_data->SColorMap->Colors)) + ((gfx->Bytes[3]) * 3); // see [1] for Bytes[3] details
+		// convert palette to uint32_t for SDL to handle
+		uint32_t key_clr = SDL_MapRGB(temp->format, gif_plt[0], gif_plt[1], gif_plt[2]);
+		// set the key with SDL_TRUE to enable it
+		SDL_SetColorKey(temp, SDL_TRUE, key_clr);
+	}
+
+	// copy over region that is being updated, leaving anything else
 	SDL_BlitSurface(temp, nullptr, this->surface, &dest);
 	SDL_FreeSurface(temp);
 
@@ -196,11 +228,11 @@ void IVAnimatedImage::set_status(state s) {
 
 /*
 	TODO:
-	- Transparency palette index support
+	- Some troublesome gifs will now no longer play at all
+	- Scrambled palette bug still exists on some images
 */
 
 /*
-[1]: 	Byte index is 1 because giflib cuts off the first 3 bytes of extension chunk.
-		Payload is then [Packed Byte], [Upper Delay], [Lower Delay], [Transparency Index].
-		Cast to 16 bit int then catches both bytes of the delay value.
+[1]: 	Giflib cuts off the first 3 bytes of extension chunk.
+		Payload is then [Packed/Flag Byte], [Upper Delay], [Lower Delay], [Transparency Index].
 */

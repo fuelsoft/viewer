@@ -38,6 +38,8 @@ private:
 
 	uint16_t getDelay();
 
+	ExtensionBlock* getGraphicsBlock(uint16_t index);
+
 	void animate();
 
 public:
