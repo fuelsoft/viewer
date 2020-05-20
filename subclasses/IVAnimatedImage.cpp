@@ -104,6 +104,11 @@ IVAnimatedImage::IVAnimatedImage(SDL_Renderer* renderer, std::filesystem::path p
 		throw IVUTIL::EXCEPT_IMG_LOAD_FAIL;
 	}
 
+	// Gif is a static image, better suited as a IVStaticImage
+	if (gif_data->ImageCount == 1) {
+		throw IVUTIL::EXCEPT_IMG_GIF_STATIC;
+	}
+
 	this->animated = (gif_data->ImageCount > 1);
 	this->renderer = renderer;
 	this->w = gif_data->SWidth;
@@ -111,15 +116,22 @@ IVAnimatedImage::IVAnimatedImage(SDL_Renderer* renderer, std::filesystem::path p
 
 	this->frame_count = gif_data->ImageCount;
 
-	// NOTE: IN BITS
-	this->depth = gif_data->SColorMap->BitsPerPixel;
+	if (gif_data->SColorMap) {
+		// NOTE: IN BITS
+		this->depth = gif_data->SColorMap->BitsPerPixel;
 
-	/* I came across an example gif which was reported as 6 BPP by giflib.		*/
-	/* However, Windows reported it as 8 BPP and when set as 8 BPP, it loaded.	*/
-	/* In conclusion, I'm going to treat everything as a multiple of 8.			*/
-	if (this->depth % 8) {
+		/* I came across an example gif which was reported as 6 BPP by giflib.		*/
+		/* However, Windows reported it as 8 BPP and when set as 8 BPP, it loaded.	*/
+		/* In conclusion, I'm going to treat everything as a multiple of 8.			*/
+		if (this->depth % 8) {
+			this->depth = 8;
+		}
+	}
+	else {
+		// No global palette, assume 8 BPP depth
 		this->depth = 8;
 	}
+	
 
 	// Create surface with existing gif data. 8 bit depth will trigger automatic creation of palette to be filled next
 	this->surface = SDL_CreateRGBSurfaceFrom((void *) gif_data->SavedImages[0].RasterBits, this->w, this->h, this->depth, this->w * (this->depth >> 3), 0, 0, 0, 0);

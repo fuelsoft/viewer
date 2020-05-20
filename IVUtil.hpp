@@ -38,6 +38,7 @@ namespace IVUTIL {
 	enum IVEXCEPT {
 		EXCEPT_IMG_LOAD_FAIL,
 		EXCEPT_IMG_OPEN_FAIL,
+		EXCEPT_IMG_GIF_STATIC,
 	};
 
 	// This the data read from and written to settings file.
