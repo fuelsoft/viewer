@@ -16,7 +16,9 @@ NICK WILSON
 
 class IVAnimatedImage : public IVImage{
 private:
-	GifFileType* gif_data;
+	GifFileType* gif_data = nullptr;
+	SDL_Surface* surface = nullptr;
+
 	uint8_t depth = 0;
 	uint16_t frame_index = 0;
 	uint16_t delay_val = 0;

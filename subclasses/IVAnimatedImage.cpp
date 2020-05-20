@@ -111,20 +111,20 @@ IVAnimatedImage::IVAnimatedImage(SDL_Renderer* renderer, std::filesystem::path p
 	}
 
 	// Create surface with existing gif data. 8 bit depth will trigger automatic creation of palette to be filled next
-	SDL_Surface* surface = SDL_CreateRGBSurfaceFrom((void *) gif_data->SavedImages[0].RasterBits, this->w, this->h, this->depth, this->w * (this->depth >> 3), 0, 0, 0, 0);
+	this->surface = SDL_CreateRGBSurfaceFrom((void *) gif_data->SavedImages[0].RasterBits, this->w, this->h, this->depth, this->w * (this->depth >> 3), 0, 0, 0, 0);
 
 	if (gif_data->SColorMap) { // if global colour palette defined
 		// convert from global giflib colour to SDL colour and populate palette
-		setPalette(gif_data->SColorMap, surface);
+		setPalette(gif_data->SColorMap, this->surface);
 	}
 	else if (gif_data->SavedImages[this->frame_index].ImageDesc.ColorMap) { // local colour palette
 		// convert from local giflib colour to SDL colour and populate palette
-		setPalette(gif_data->SavedImages[this->frame_index].ImageDesc.ColorMap, surface);
+		setPalette(gif_data->SavedImages[this->frame_index].ImageDesc.ColorMap, this->surface);
 	}
 
-	this->texture = SDL_CreateTextureFromSurface(this->renderer, surface);
+	this->texture = SDL_CreateTextureFromSurface(this->renderer, this->surface);
 
-	SDL_FreeSurface(surface);
+	// SDL_FreeSurface(surface);
 
 	if (this->animated) animationThread = std::thread(&IVAnimatedImage::animate, this);
 }
@@ -135,6 +135,7 @@ IVAnimatedImage::~IVAnimatedImage() {
 		animationThread.join();
 	}
 	DGifCloseFile(this->gif_data, nullptr);
+	SDL_FreeSurface(this->surface);
 	SDL_DestroyTexture(this->texture);
 }
 
@@ -143,22 +144,32 @@ IVAnimatedImage::~IVAnimatedImage() {
 *			This should be called as infrequently as possible - static images don't need refreshing.
 */
 void IVAnimatedImage::prepare() {
-	SDL_Surface* surface = SDL_CreateRGBSurfaceFrom((void *) this->gif_data->SavedImages[frame_index].RasterBits, this->w, this->h, this->depth, this->w * (this->depth >> 3), 0, 0, 0, 0);
+	int local_index = frame_index;
+
+	GifImageDesc* im_desc = &this->gif_data->SavedImages[local_index].ImageDesc;
+
+	SDL_Rect dest;
+	dest.x = im_desc->Left; 
+	dest.y = im_desc->Top; 
+	dest.w = im_desc->Width; 
+	dest.h = im_desc->Height;
+
+	SDL_Surface* temp = SDL_CreateRGBSurfaceFrom((void *) this->gif_data->SavedImages[local_index].RasterBits, im_desc->Width, im_desc->Height, this->depth, im_desc->Width * (this->depth >> 3), 0, 0, 0, 0);
 
 	if (gif_data->SColorMap) { // if global colour palette defined
 		// convert from global giflib colour to SDL colour and populate palette
-		setPalette(gif_data->SColorMap, surface);
+		setPalette(gif_data->SColorMap, temp);
 	}
-	else if (gif_data->SavedImages[this->frame_index].ImageDesc.ColorMap) { // local colour palette
+	else if (gif_data->SavedImages[local_index].ImageDesc.ColorMap) { // local colour palette
 		// convert from local giflib colour to SDL colour and populate palette
-		setPalette(gif_data->SavedImages[this->frame_index].ImageDesc.ColorMap, surface);
+		setPalette(gif_data->SavedImages[local_index].ImageDesc.ColorMap, temp);
 	}
+
+	SDL_BlitSurface(temp, nullptr, this->surface, &dest);
+	SDL_FreeSurface(temp);
 
 	SDL_DestroyTexture(this->texture); //delete old texture
-
-	this->texture = SDL_CreateTextureFromSurface(this->renderer, surface);
-
-	SDL_FreeSurface(surface);
+	this->texture = SDL_CreateTextureFromSurface(this->renderer, this->surface);
 
 	this->ready = false; 	// mark current frame as already requested
 }
