@@ -186,13 +186,13 @@ void IVAnimatedImage::prepare() {
 
 	SDL_Surface* temp = SDL_CreateRGBSurfaceFrom((void *) this->gif_data->SavedImages[local_index].RasterBits, im_desc->Width, im_desc->Height, this->depth, im_desc->Width * (this->depth >> 3), 0, 0, 0, 0);
 
-	if (gif_data->SColorMap) { // if global colour palette defined
-		// convert from global giflib colour to SDL colour and populate palette
-		setPalette(gif_data->SColorMap, temp);
-	}
-	else if (gif_data->SavedImages[local_index].ImageDesc.ColorMap) { // local colour palette
+	if (gif_data->SavedImages[local_index].ImageDesc.ColorMap) { // local colour palette
 		// convert from local giflib colour to SDL colour and populate palette
 		setPalette(gif_data->SavedImages[local_index].ImageDesc.ColorMap, temp);
+	}
+	else if (gif_data->SColorMap) { // if global colour palette defined
+		// convert from global giflib colour to SDL colour and populate palette
+		setPalette(gif_data->SColorMap, temp);
 	}
 
 	//get gfx extension block to find transparent palette index
@@ -200,8 +200,15 @@ void IVAnimatedImage::prepare() {
 
 	//if gfx block exists and transparency flag is set, set colour key
 	if (gfx && (gfx->Bytes[0] & 0x01)) {
+		uint8_t* c_plt = nullptr;
+		if (gif_data->SavedImages[local_index].ImageDesc.ColorMap) {
+			c_plt = (uint8_t*) (gif_data->SavedImages[local_index].ImageDesc.ColorMap->Colors); //local palette
+		}
+		else {
+			c_plt = (uint8_t*) (gif_data->SColorMap->Colors); //global palette
+		}
 		// get a pointer to the referenced target palette index for keying
-		uint8_t* gif_plt = ((uint8_t*) (gif_data->SColorMap->Colors)) + ((gfx->Bytes[3]) * 3); // see [1] for Bytes[3] details
+		uint8_t* gif_plt = (c_plt) + ((gfx->Bytes[3]) * 3);
 		// convert palette to uint32_t for SDL to handle
 		uint32_t key_clr = SDL_MapRGB(temp->format, gif_plt[0], gif_plt[1], gif_plt[2]);
 		// set the key with SDL_TRUE to enable it
