@@ -32,6 +32,7 @@ NICK WILSON
 #endif
 
 #include <Windows.h>
+#include <Shellapi.h> //reinclude after excluding with WIN32_LEAN_AND_MEAN
 
 /* /// CONSTANTS /// */
 
@@ -475,6 +476,23 @@ int main(int argc, char* argv[]) {
 						case SDLK_F1: //help
 							MessageBox(nullptr, IVC::VERSION_ABOUT.c_str(), ("About " + IVUTIL::APPLICATION_TITLE).c_str(), MB_OK | MB_ICONINFORMATION);
 							break;
+						case SDLK_F2: { // explorer's properties dialog
+							SHELLEXECUTEINFO sei;
+							size_t path_size = (IVG::FILES_IMAGES_ADJACENT[IVG::INDEX_IMAGE_FILE].string().length() + 1);
+							char* new_path = (char *) malloc(path_size);
+
+							memcpy(new_path, IVG::FILES_IMAGES_ADJACENT[IVG::INDEX_IMAGE_FILE].string().c_str(), path_size);
+							memset(&sei, 0, sizeof(SHELLEXECUTEINFO));
+
+							sei.cbSize = sizeof(SHELLEXECUTEINFO);
+							sei.lpFile = new_path;
+							sei.nShow = SW_SHOWNORMAL;
+							sei.fMask = SEE_MASK_NOCLOSEPROCESS | SEE_MASK_INVOKEIDLIST;
+							sei.lpVerb = "properties";
+							ShellExecuteEx(&sei);
+
+							free(new_path);
+							} break;
 						case SDLK_TAB: //toggle light mode
 							IVG::SETTINGS.DISPLAY_MODE_DARK = !IVG::SETTINGS.DISPLAY_MODE_DARK;
 							redraw = true;
