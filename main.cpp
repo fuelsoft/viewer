@@ -473,15 +473,15 @@ int main(int argc, char* argv[]) {
 						case SDLK_ESCAPE: //quit
 							quit = true;
 							break;
-						case SDLK_F1: //help
+						case SDLK_F1: //about
 							MessageBox(nullptr, IVC::VERSION_ABOUT.c_str(), ("About " + IVUTIL::APPLICATION_TITLE).c_str(), MB_OK | MB_ICONINFORMATION);
 							break;
 						case SDLK_F2: { // explorer's properties dialog
 							SHELLEXECUTEINFO sei;
-							size_t path_size = (IVG::FILES_IMAGES_ADJACENT[IVG::INDEX_IMAGE_FILE].string().length() + 1);
+							size_t path_size = (std::filesystem::canonical(IVG::FILES_IMAGES_ADJACENT[IVG::INDEX_IMAGE_FILE]).string().length() + 1);
 							char* new_path = (char *) malloc(path_size);
 
-							memcpy(new_path, IVG::FILES_IMAGES_ADJACENT[IVG::INDEX_IMAGE_FILE].string().c_str(), path_size);
+							memcpy(new_path, std::filesystem::canonical(IVG::FILES_IMAGES_ADJACENT[IVG::INDEX_IMAGE_FILE]).string().c_str(), path_size);
 							memset(&sei, 0, sizeof(SHELLEXECUTEINFO));
 
 							sei.cbSize = sizeof(SHELLEXECUTEINFO);
@@ -492,6 +492,11 @@ int main(int argc, char* argv[]) {
 							ShellExecuteEx(&sei);
 
 							free(new_path);
+							} break;
+						case SDLK_F3: { // open file's containing folder
+							std::string function = "explorer.exe /select,\"" + std::filesystem::canonical(IVG::FILES_IMAGES_ADJACENT[IVG::INDEX_IMAGE_FILE]).string() + "\"";
+							// this could also be done with SHOpenFolderAndSelectItems but the setup and code required for that is extensive
+							system(function.c_str());
 							} break;
 						case SDLK_TAB: //toggle light mode
 							IVG::SETTINGS.DISPLAY_MODE_DARK = !IVG::SETTINGS.DISPLAY_MODE_DARK;
