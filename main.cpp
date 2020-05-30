@@ -498,6 +498,13 @@ int main(int argc, char* argv[]) {
 							// this could also be done with SHOpenFolderAndSelectItems but the setup and code required for that is extensive
 							system(function.c_str());
 							} break;
+						case SDLK_F5: //reload image
+							if (loadTextureFromFile(win.renderer, std::filesystem::canonical(IVG::FILES_IMAGES_ADJACENT[IVG::INDEX_IMAGE_FILE]))) { //if call returned non-zero, there was an error
+								std::cerr << IVUTIL::LOG_ERROR << IMG_GetError() << std::endl;
+								break;
+							}
+							redraw = true;
+							break;
 						case SDLK_TAB: //toggle light mode
 							IVG::SETTINGS.DISPLAY_MODE_DARK = !IVG::SETTINGS.DISPLAY_MODE_DARK;
 							redraw = true;
