@@ -494,9 +494,9 @@ int main(int argc, char* argv[]) {
 							free(new_path);
 							} break;
 						case SDLK_F3: { // open file's containing folder
-							std::string function = "explorer.exe /select,\"" + std::filesystem::canonical(IVG::FILES_IMAGES_ADJACENT[IVG::INDEX_IMAGE_FILE]).string() + "\"";
 							// this could also be done with SHOpenFolderAndSelectItems but the setup and code required for that is extensive
-							system(function.c_str());
+							std::string function = "/select,\"" + std::filesystem::canonical(IVG::FILES_IMAGES_ADJACENT[IVG::INDEX_IMAGE_FILE]).string() + "\"";
+							ShellExecuteA(nullptr, "open", "explorer.exe", function.c_str(), nullptr, SW_SHOWNORMAL);
 							} break;
 						case SDLK_F5: //reload image
 							if (loadTextureFromFile(win.renderer, std::filesystem::canonical(IVG::FILES_IMAGES_ADJACENT[IVG::INDEX_IMAGE_FILE]))) { //if call returned non-zero, there was an error
