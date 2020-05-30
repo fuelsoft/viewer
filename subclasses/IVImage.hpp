@@ -34,7 +34,8 @@ public:
 
 	virtual void prepare() {};
 
-	virtual void set_status(state s) {};
+	/* [[maybe_unused]] attribute is new to C++17 */
+	virtual void set_status([[maybe_unused]] state s) {};
 
 	virtual ~IVImage() {};
 };
