@@ -8,8 +8,8 @@ CXX = C:\\msys64\\mingw64\\bin\\x86_64-w64-mingw32-g++.exe
 WINDRES = C:\\msys64\\mingw64\\bin\\windres.exe
 
 # Modify these to point to your library include(s) and lib(s) folders
-IC = -IC:\\lib\\x86_64\\include -IC:\\msys64\\mingw64\\include
-LC = -LC:\\lib\\x86_64\\lib 	-LC:\\msys64\\mingw64\\lib
+IC = -IC:\\msys64\\mingw64\\include
+LC = -LC:\\msys64\\mingw64\\lib
 
 ### NO FURTHER CHANGES REQUIRED ###
 
