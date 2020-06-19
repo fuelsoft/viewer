@@ -204,14 +204,14 @@ void drawTileTexture(Window* win, TiledTexture* tiledTexture) {
 */
 int loadTextureFromFile(SDL_Renderer* renderer, std::filesystem::path filePath) {
 	//try loading image from filename
-	int filetype = IVUTIL::formatSupport(filePath.extension().string());
+	int filetype = IVUTIL::libSupport(filePath.extension().string());
 	try {
-		if (filetype == IVUTIL::GIF) {
+		if (filetype == IVUTIL::TYPE_GIFLIB) {
 			//load animated image
 			IVG::IMAGE_CURRENT.reset(new IVAnimatedImage(renderer, filePath));
 		}
-		else if (filetype > -1) {
-			//load static image
+		else if (filetype == IVUTIL::TYPE_SDL || filetype == IVUTIL::TYPE_LIBHEIF) {
+			//load static SDL image or static HEIF image
 			IVG::IMAGE_CURRENT.reset(new IVStaticImage(renderer, filePath));
 		}
 		else {
@@ -221,10 +221,10 @@ int loadTextureFromFile(SDL_Renderer* renderer, std::filesystem::path filePath) 
 	catch (IVUTIL::IVEXCEPT except) {
 		switch (except) {
 			case IVUTIL::EXCEPT_IMG_OPEN_FAIL:
-				std::cerr << IVUTIL::LOG_WARNING << "Failed to open image \'" << filePath << "\'" << std::endl;
+				std::cerr << IVUTIL::LOG_WARNING << "Failed to open image \'" << filePath.string() << "\'" << std::endl;
 				break;
 			case IVUTIL::EXCEPT_IMG_LOAD_FAIL:
-				std::cerr << IVUTIL::LOG_WARNING << "Failed to load image \'" << filePath << "\'" << std::endl;
+				std::cerr << IVUTIL::LOG_WARNING << "Failed to load image \'" << filePath.string() << "\'" << std::endl;
 				break;
 			case IVUTIL::EXCEPT_IMG_GIF_STATIC:
 				std::cout << IVUTIL::LOG_NOTICE << "Image better suited as static, switching" << std::endl;
@@ -235,7 +235,7 @@ int loadTextureFromFile(SDL_Renderer* renderer, std::filesystem::path filePath) 
 				} catch (...) {
 					return 1;
 				}
-				
+
 			default:
 				std::cerr << IVUTIL::LOG_WARNING << "Unknown error loading image \'" << filePath << "\'" << std::endl;
 				break;
@@ -283,7 +283,7 @@ int main(int argc, char* argv[]) {
 	SDL_IMAGE_VERSION(&IVC::SDL_IMAGE_COMPILED_VERSION);
 
 	IVC::VERSION_ABOUT = IVUTIL::APPLICATION_TITLE + " " + IVC::IVVERSION
-							+ "\nBUILT " + IVC::BUILD_DATE + " " + IVC::BUILD_TIME 
+							+ "\nBUILT " + IVC::BUILD_DATE + " " + IVC::BUILD_TIME
 							+ "\nGCC " + versionToString(&IVC::GCC_COMPILER_VERSION)
 							+ "\nSTD " + std::to_string(IVC::CPP_STANDARD)
 							+ "\nSDL VERSION " + versionToString(&IVC::SDL_COMPILED_VERSION)
@@ -358,7 +358,7 @@ int main(int argc, char* argv[]) {
 		//TODO: Wide strings
 		std::cerr << IVUTIL::LOG_ERROR << e.what() << std::endl;
 		MessageBox(nullptr, "This can be the result of the path containing UTF-8 characters.\n"
-							"Check for invalid or suspect characters in folders or filename.", 
+							"Check for invalid or suspect characters in folders or filename.",
 							"Could not resolve canonical file path!", MB_OK | MB_ICONERROR);
 		return 1;
 	}
@@ -411,7 +411,7 @@ int main(int argc, char* argv[]) {
 		events and once the queue is empty, draw once.
 	*/
 	bool redraw = false;
-	
+
 	/* IMPROVE FRAMERATE MANAGEMENT:
 		Rather than using a constant delay and relying on SDL's renderer vsync,
 		manage time tracking here. Enables higher and more consistent frame rates.

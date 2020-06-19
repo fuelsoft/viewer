@@ -4,6 +4,8 @@ NICK WILSON
 2020
 */
 
+#include <libheif/heif_cxx.h>
+
 #include "IVUtil.hpp"	//utilities
 #include "IVImage.hpp"	//base class
 
