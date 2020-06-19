@@ -40,6 +40,7 @@ Packages you'll need, as they appear in MSYS:
 * mingw-w64-x86_64-SDL2
 * mingw-w64-x86_64-SDL2_image
 * mingw-w64-x86_64-giflib
+* mingw-w64-x86_64-libheif
 
 ## Building:
 Run `make <type>` in the Viewer folder where type is either `Debug` or `Release` (defaults to `Release`).
