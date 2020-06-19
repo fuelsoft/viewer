@@ -31,7 +31,14 @@ namespace IVUTIL {
 		GIF,
 		BMP,
 		TIF,
-		TGA
+		TGA,
+		HEIF
+	};
+
+	enum LIB_TYPE_SUPPORT {
+		TYPE_SDL,
+		TYPE_GIFLIB,
+		TYPE_LIBHEIF
 	};
 
 	/* Home cooked exception codes */
@@ -53,6 +60,8 @@ namespace IVUTIL {
 	};
 
 	int formatSupport(std::string extension);
+
+	int libSupport(std::string extension);
 
 	void readSettings(std::filesystem::path target, IVSETTINGS* settings);
 	

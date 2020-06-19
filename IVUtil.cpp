@@ -26,6 +26,19 @@ int IVUTIL::formatSupport(std::string extension) {
 	
 	// sort by first character of extension
 	switch (extensionUppercase[0]) {
+		case 'B':
+			/* BMP */
+			if (!extensionUppercase.compare("BMP"))  return BMP;
+			break;
+		case 'G':
+			/* GIF */
+			if (!extensionUppercase.compare("GIF"))  return GIF;
+			break;
+		case 'H':
+			/* HEIF */
+			if (!extensionUppercase.compare("HEIF")) return HEIF;
+			if (!extensionUppercase.compare("HEIC")) return HEIF;
+			break;
 		case 'J':
 			/* JP(E)G */
 			if (!extensionUppercase.compare("JPG"))  return JPG;
@@ -34,14 +47,6 @@ int IVUTIL::formatSupport(std::string extension) {
 		case 'P':
 			/* PNG */
 			if (!extensionUppercase.compare("PNG"))  return PNG;
-			break;
-		case 'G':
-			/* GIF */
-			if (!extensionUppercase.compare("GIF"))  return GIF;
-			break;
-		case 'B':
-			/* BMP */
-			if (!extensionUppercase.compare("BMP"))  return BMP;
 			break;
 		case 'T':
 			/* TIF(F) */
@@ -55,6 +60,29 @@ int IVUTIL::formatSupport(std::string extension) {
 	}
 
 	return -1;
+}
+
+
+/**
+* formatSupport	- Return library supporting file type
+* extension 	> File extension as String
+* return - int 	< LIB_TYPE_SUPPORT or -1 if unsupported
+*/
+int IVUTIL::libSupport(std::string extension) {
+	switch (formatSupport(extension)) {
+		case BMP:
+		case JPG:
+		case PNG:
+		case TIF:
+		case TGA:
+			return TYPE_SDL;
+		case GIF:
+			return TYPE_GIFLIB;
+		case HEIF:
+			return TYPE_LIBHEIF;
+		default:
+			return -1;
+	}
 }
 
 /**
