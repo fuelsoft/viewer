@@ -44,8 +44,7 @@ namespace IVUTIL {
 	/* Home cooked exception codes */
 	enum IVEXCEPT {
 		EXCEPT_IMG_LOAD_FAIL,
-		EXCEPT_IMG_OPEN_FAIL,
-		EXCEPT_IMG_GIF_STATIC,
+		EXCEPT_IMG_OPEN_FAIL
 	};
 
 	// This the data read from and written to settings file.

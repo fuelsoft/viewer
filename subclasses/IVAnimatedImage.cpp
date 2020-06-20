@@ -104,11 +104,6 @@ IVAnimatedImage::IVAnimatedImage(SDL_Renderer* renderer, std::filesystem::path p
 		throw IVUTIL::EXCEPT_IMG_LOAD_FAIL;
 	}
 
-	// Gif is a static image, better suited as a IVStaticImage
-	if (gif_data->ImageCount == 1) {
-		throw IVUTIL::EXCEPT_IMG_GIF_STATIC;
-	}
-
 	this->animated = (gif_data->ImageCount > 1);
 	this->renderer = renderer;
 	this->w = gif_data->SWidth;

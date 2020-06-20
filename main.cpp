@@ -226,15 +226,6 @@ int loadTextureFromFile(SDL_Renderer* renderer, std::filesystem::path filePath) 
 			case IVUTIL::EXCEPT_IMG_LOAD_FAIL:
 				std::cerr << IVUTIL::LOG_WARNING << "Failed to load image \'" << filePath.string() << "\'" << std::endl;
 				break;
-			case IVUTIL::EXCEPT_IMG_GIF_STATIC:
-				std::cout << IVUTIL::LOG_NOTICE << "Image better suited as static, switching" << std::endl;
-				/* This may also throw so it needs a t/c block */
-				try {
-					IVG::IMAGE_CURRENT.reset(new IVStaticImage(renderer, filePath));
-					return 0;
-				} catch (...) {
-					return 1;
-				}
 
 			default:
 				std::cerr << IVUTIL::LOG_WARNING << "Unknown error loading image \'" << filePath << "\'" << std::endl;
