@@ -12,12 +12,12 @@ Things WPV does that drove me to insanity:
     * Let me assure you, this is not correct.
     * Afflicted photos open correctly in Photoshop, web browsers, etc. It's just WPV that has a problem.
 * Very low FPS and bad screen tearing with no warning when zooming or when panning while zoomed in.
-    * Not a big deal with a static image but it's really annoying and there's no good reason for it.
+    * Really annoying, and there's no good reason for it.
 
 How hard could it be to write a replacement, right?
 
 Things *Viewer* can do:
-* Display most common image formats.
+* Display many common image formats.
 * Zoom!
 * Pan!
 * Wow!
@@ -88,10 +88,23 @@ You can also set Viewer as the default program for some image formats if you wan
 |F2|F2|View file info|Display Windows Explorer's *Properties* window for the image.|
 |F3|F3|Containing folder|Launches Windows Explorer to the image's parent folder.|
 
-### Supported formats:
-As listed [here](https://www.libsdl.org/projects/SDL_image/docs/SDL_image.pdf#page=8&zoom=auto,-205,547). 
+### Supported formats (by library):
 
-#### Notes:
+#### SDL:
+* JP(E)G
+* PNG
+* BMP
+* TIF(F)
+* TGA
+
+#### GIFLIB:
+* GIF
+
+#### LIBHEIF:
+* HEIC
+* HEIF
+
+### Notes:
 * Some file types can contain multiple resolutions/variations of an image (ICO, CUR, ...). SDL_image [documentation][1] states that "for files with multiple images, the first one found with the highest color count is chosen."
 * Window size and position are stored in `settings.cfg` in the program folder. If this becomes broken somehow (window appears off-screen, etc.) it is safe to delete this file to restore defaults.
 * Setting up a version of GCC new enough to support C++17 is a really bad time on Windows and unless you really need to build from source, I highly recommend you use one of the builds. Otherwise, I'll direct you to [MSYS2](https://www.msys2.org/)'s homepage.

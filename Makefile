@@ -21,7 +21,7 @@ WARNINGS = -Wextra -Wall
 DEBUG = -Og -g
 OPT = -O2
 STD = -std=c++17
-LIBS = -lmingw32 -lSDL2main -lSDL2.dll -lSDL2_image.dll -luser32 -lgdi32 -ldxguid -lgif
+LIBS = -lmingw32 -lSDL2main -lSDL2.dll -lSDL2_image.dll -luser32 -lgdi32 -ldxguid -lgif -lheif.dll
 
 # If run with just 'make' default to the release build
 Default: Release

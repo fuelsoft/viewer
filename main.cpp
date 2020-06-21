@@ -46,7 +46,7 @@ namespace IVC {
 	const std::string BUILD_DATE = __DATE__;
 	const std::string BUILD_TIME = __TIME__;
 	std::string VERSION_ABOUT;
-	const std::string IVVERSION = "0.3.1";
+	const std::string IVVERSION = "0.4.0";
 
 	/* WINDOW MANAGEMENT */
 	const int WIN_DEFAULT_W = 1600;
