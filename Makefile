@@ -38,12 +38,12 @@ Debug: $(INC_FILES)
 
 # Release build includes compiler optimization and executable metadata
 Release: $(INC_FILES)
-	$(CXX) $(WARNINGS) $(STD) $(OPT) $(IC) -c IVUtil.cpp -o obj\\Debug\\IVUtil.o
-	$(CXX) $(WARNINGS) $(STD) $(OPT) $(IC) -c main.cpp -o obj\\Debug\\main.o
-	$(CXX) $(WARNINGS) $(STD) $(OPT) $(IC) -c subclasses\\IVAnimatedImage.cpp -o obj\\Debug\\subclasses\\IVAnimatedImage.o
-	$(CXX) $(WARNINGS) $(STD) $(OPT) $(IC) -c subclasses\\IVStaticImage.cpp -o obj\\Debug\\subclasses\\IVStaticImage.o
-	$(CXX) $(WARNINGS) $(STD) $(OPT) $(IC) -c subclasses\\TiledTexture.cpp -o obj\\Debug\\subclasses\\TiledTexture.o
-	$(CXX) $(WARNINGS) $(STD) $(OPT) $(IC) -c subclasses\\Window.cpp -o obj\\Debug\\subclasses\\Window.o
+	$(CXX) $(WARNINGS) $(STD) $(OPT) $(IC) -c IVUtil.cpp -o obj\\Release\\IVUtil.o
+	$(CXX) $(WARNINGS) $(STD) $(OPT) $(IC) -c main.cpp -o obj\\Release\\main.o
+	$(CXX) $(WARNINGS) $(STD) $(OPT) $(IC) -c subclasses\\IVAnimatedImage.cpp -o obj\\Release\\subclasses\\IVAnimatedImage.o
+	$(CXX) $(WARNINGS) $(STD) $(OPT) $(IC) -c subclasses\\IVStaticImage.cpp -o obj\\Release\\subclasses\\IVStaticImage.o
+	$(CXX) $(WARNINGS) $(STD) $(OPT) $(IC) -c subclasses\\TiledTexture.cpp -o obj\\Release\\subclasses\\TiledTexture.o
+	$(CXX) $(WARNINGS) $(STD) $(OPT) $(IC) -c subclasses\\Window.cpp -o obj\\Release\\subclasses\\Window.o
 	$(WINDRES) -J rc -O coff -i $(CURDIR)\\meta\\meta.rc -o $(CURDIR)\\obj\\Release\\meta\\meta.res
 	$(CXX) $(OPT) $(LC) -o bin\\Release\\Viewer.exe obj\\Release\\IVUtil.o obj\\Release\\main.o obj\\Release\\subclasses\\IVAnimatedImage.o obj\\Release\\subclasses\\IVStaticImage.o obj\\Release\\subclasses\\TiledTexture.o obj\\Release\\subclasses\\Window.o obj\\Release\\meta\\meta.res -s -static-libstdc++ -static-libgcc -static $(LIBS) -mwindows
 
