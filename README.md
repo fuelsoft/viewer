@@ -87,6 +87,7 @@ You can also set Viewer as the default program for some image formats if you wan
 |F1|F1|View version info|Probably not useful to you if you're reading this.|
 |F2|F2|View file info|Display Windows Explorer's *Properties* window for the image.|
 |F3|F3|Containing folder|Launches Windows Explorer to the image's parent folder.|
+|F5|F5|Refresh|Reload the current image.|
 
 ### Supported formats (by library):
 
