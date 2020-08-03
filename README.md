@@ -51,9 +51,10 @@ Run `make <type>` in the Viewer folder where type is either `Debug` or `Release`
 * These are mostly just the build commands as CodeBlocks runs them - they may not always be up to date enough to build the project without modification.
 
 ## Usage:
-First, ensure that the executable has all the `.dll` files next to it. There are two groups you need:
-* `SDL2.dll` from the SDL2 download above.
-* `SDL2_image.dll` & all the related image-type DLLs from the SDL_image download above.
+First, ensure that the executable has all the `.dll` files available to it. There are a number you need:
+* `SDL2`, `SDL2_image` & all the related image `.dll`s (including `zlib`)
+* `libaom`, `libde265`, `libheif`, `libx265` for HEIF files
+* `libgcc_s_seh`, `libstdc++`, `libwinpthread` for basic program functions
 
 Then call the program by either dragging an image onto Viewer.exe or by running `Viewer.exe <filename>` in a terminal.
 
@@ -114,7 +115,6 @@ You can also set Viewer as the default program for some image formats if you wan
 * Add key to set zoom to 1:1 pixel ratio
 * Zoom on mouse instead of window center
 * Stop image from being moved off-screen
-* Implement HEIF support
 * Possible **minimal** RAW support
 
 ### Known Problems:
