@@ -46,7 +46,10 @@ uint16_t IVAnimatedImage::getDelay(uint16_t index) {
 	//call search for graphics block
 	ExtensionBlock* gfx = getGraphicsBlock(index);
 	//if one was found, update delay
-	if (gfx) this->delay_val = (uint16_t) (gfx->Bytes[1]); // see [1]
+	if (gfx) {
+		// delay is bounded by somewhat standard lower limit of 0.02 seconds per frame
+		this->delay_val = std::max((uint16_t) GIF_MIN_DELAY, (uint16_t) (((uint16_t) (gfx->Bytes[2]) << 8) + gfx->Bytes[1])); // see [1]
+	}
 	return this->delay_val;
 }
 
@@ -195,19 +198,8 @@ void IVAnimatedImage::prepare() {
 
 	//if gfx block exists and transparency flag is set, set colour key
 	if (gfx && (gfx->Bytes[0] & 0x01)) {
-		uint8_t* c_plt = nullptr;
-		if (gif_data->SavedImages[local_index].ImageDesc.ColorMap) {
-			c_plt = (uint8_t*) (gif_data->SavedImages[local_index].ImageDesc.ColorMap->Colors); //local palette
-		}
-		else {
-			c_plt = (uint8_t*) (gif_data->SColorMap->Colors); //global palette
-		}
-		// get a pointer to the referenced target palette index for keying
-		uint8_t* gif_plt = (c_plt) + ((gfx->Bytes[3]) * 3);
-		// convert palette to uint32_t for SDL to handle
-		uint32_t key_clr = SDL_MapRGB(temp->format, gif_plt[0], gif_plt[1], gif_plt[2]);
 		// set the key with SDL_TRUE to enable it
-		SDL_SetColorKey(temp, SDL_TRUE, key_clr);
+		SDL_SetColorKey(temp, SDL_TRUE, gfx->Bytes[3]);
 	}
 
 	// copy over region that is being updated, leaving anything else

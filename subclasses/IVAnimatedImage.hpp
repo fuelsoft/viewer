@@ -14,6 +14,8 @@ NICK WILSON
 #ifndef ANIMATEDIMAGE_H
 #define ANIMATEDIMAGE_H
 
+#define GIF_MIN_DELAY 0x02
+
 class IVAnimatedImage : public IVImage{
 private:
 	GifFileType* gif_data = nullptr;
