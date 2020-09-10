@@ -25,6 +25,14 @@ private:
 	uint16_t frame_index = 0;
 	uint16_t delay_val = 0;
 
+#ifdef MAKE_NO_PRERENDER
+	bool prerendered = false;
+#else
+	bool prerendered = true;
+#endif
+
+	std::vector<SDL_Texture*> frames;
+
 	bool play = true;
 	bool quit = false;
 
@@ -34,8 +42,6 @@ private:
 
 	void setIndex(uint16_t index);
 
-	void next();
-
 	uint16_t getDelay(uint16_t index);
 
 	uint16_t getDelay();
@@ -43,6 +49,8 @@ private:
 	ExtensionBlock* getGraphicsBlock(uint16_t index);
 
 	void animate();
+
+	void prerender();
 
 public:
 	uint16_t frame_count = 0;
@@ -53,6 +61,8 @@ public:
 	IVAnimatedImage(SDL_Renderer* renderer, std::filesystem::path path);
 
 	~IVAnimatedImage();
+
+	void prepare(uint16_t index);
 
 	void prepare();
 

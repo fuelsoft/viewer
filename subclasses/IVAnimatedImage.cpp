@@ -92,6 +92,15 @@ void IVAnimatedImage::animate() {
 	return;
 }
 
+void IVAnimatedImage::prerender() {
+	for (int i = 0; i < this->frame_count; i++) {
+		prepare(i);
+		this->frames.push_back(this->texture);
+		this->texture = nullptr; //remove reference so next call to prepare doesn't free it
+	}
+	return;
+}
+
 /* PUBLIC */
 
 IVAnimatedImage::IVAnimatedImage(SDL_Renderer* renderer, std::filesystem::path path) {
@@ -152,7 +161,10 @@ IVAnimatedImage::IVAnimatedImage(SDL_Renderer* renderer, std::filesystem::path p
 
 	this->texture = SDL_CreateTextureFromSurface(this->renderer, this->surface);
 
-	if (this->animated) animationThread = std::thread(&IVAnimatedImage::animate, this);
+	if (this->animated) {
+		if (this->prerendered) prerender();
+		animationThread = std::thread(&IVAnimatedImage::animate, this);
+	}
 }
 
 IVAnimatedImage::~IVAnimatedImage() {
@@ -162,18 +174,23 @@ IVAnimatedImage::~IVAnimatedImage() {
 	}
 	DGifCloseFile(this->gif_data, nullptr);
 	SDL_FreeSurface(this->surface);
-	SDL_DestroyTexture(this->texture);
+	if (prerendered) {
+		for (uint32_t i = 0; i < this->frames.size(); i++) {
+			SDL_DestroyTexture(this->frames[i]);
+		}
+	}
+	else {
+		SDL_DestroyTexture(this->texture);
+	}
 }
 
 /**
-* prepare - Create surface from current index, apply palette and create texture, keying as required.
+* prepare - Create surface from specified index, apply palette and create texture, keying as required.
 *			This should be called as infrequently as possible - static images don't need refreshing.
 */
-void IVAnimatedImage::prepare() {
-	int local_index = frame_index;
-
+void IVAnimatedImage::prepare(uint16_t index) {
 	// shortened for simplicity
-	GifImageDesc* im_desc = &this->gif_data->SavedImages[local_index].ImageDesc;
+	GifImageDesc* im_desc = &this->gif_data->SavedImages[index].ImageDesc;
 
 	// destination for copy - if only a region is being updated, this will not cover the whole image
 	SDL_Rect dest;
@@ -182,11 +199,11 @@ void IVAnimatedImage::prepare() {
 	dest.w = im_desc->Width;
 	dest.h = im_desc->Height;
 
-	SDL_Surface* temp = SDL_CreateRGBSurfaceFrom((void *) this->gif_data->SavedImages[local_index].RasterBits, im_desc->Width, im_desc->Height, this->depth, im_desc->Width * (this->depth >> 3), 0, 0, 0, 0);
+	SDL_Surface* temp = SDL_CreateRGBSurfaceFrom((void *) this->gif_data->SavedImages[index].RasterBits, im_desc->Width, im_desc->Height, this->depth, im_desc->Width * (this->depth >> 3), 0, 0, 0, 0);
 
-	if (gif_data->SavedImages[local_index].ImageDesc.ColorMap) { // local colour palette
+	if (gif_data->SavedImages[index].ImageDesc.ColorMap) { // local colour palette
 		// convert from local giflib colour to SDL colour and populate palette
-		setPalette(gif_data->SavedImages[local_index].ImageDesc.ColorMap, temp);
+		setPalette(gif_data->SavedImages[index].ImageDesc.ColorMap, temp);
 	}
 	else if (gif_data->SColorMap) { // if global colour palette defined
 		// convert from global giflib colour to SDL colour and populate palette
@@ -194,7 +211,7 @@ void IVAnimatedImage::prepare() {
 	}
 
 	//get gfx extension block to find transparent palette index
-	ExtensionBlock* gfx = getGraphicsBlock(local_index);
+	ExtensionBlock* gfx = getGraphicsBlock(index);
 
 	//if gfx block exists and transparency flag is set, set colour key
 	if (gfx && (gfx->Bytes[0] & 0x01)) {
@@ -210,6 +227,19 @@ void IVAnimatedImage::prepare() {
 	this->texture = SDL_CreateTextureFromSurface(this->renderer, this->surface);
 
 	this->ready = false; 	// mark current frame as already requested
+}
+
+/**
+* prepare - If in prerender mode, update index. Otherwise, prepare current index frame.
+*/
+void IVAnimatedImage::prepare() {
+	if (prerendered) {
+		this->texture = frames[frame_index];
+		this->ready = false;
+	}
+	else {
+		prepare(frame_index);
+	}
 }
 
 /**
